@@ -1,0 +1,51 @@
+spring:
+  application:
+    name: travelgo
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+  datasource:
+    url: jdbc:oracle:thin:@localhost:1521/XEPDB1
+    username: travelgo
+    password: travelgo
+    driver-class-name: oracle.jdbc.OracleDriver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    defer-datasource-initialization: false
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.OracleDialect
+        format_sql: true
+        hbm2ddl:
+          auto: create
+          create_namespaces: true
+    open-in-view: false
+
+logging:
+  level:
+    org.hibernate.tool.hbm2ddl: ERROR
+    org.hibernate.tool.schema.internal.exec.GenerationTargetToDatabase: ERROR
+    # Tắt warning HHH90003004 (firstResult/maxResults with collection fetch) - đã dùng EntityGraph,
+    # warning này là noise với Hibernate 6 vì data set nhỏ (in-memory paging không ảnh hưởng)
+    org.hibernate.orm.query: ERROR
+
+server:
+  port: 8080
+
+app:
+  seed:
+    enabled: true
+  jwt:
+    secret: TravelGoJwtSecretKeyForAcademicProjectMustBeAtLeast256BitsLong!!
+    expiration-ms: 86400000
+  upload:
+    dir: uploads
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
