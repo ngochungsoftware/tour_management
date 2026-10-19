@@ -88,4 +88,4 @@ mvn test
 
 - Quên mật khẩu: trả `resetToken` trong response (không gửi email thật).
 - Thanh toán: mô phỏng CASH / BANK_TRANSFER / ONLINE.
-- Không dùng Kafka, Redis, microservice, Docker.
+
