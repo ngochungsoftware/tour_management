@@ -24,6 +24,9 @@ public class TourCreateRequest {
     private Long categoryId;
     @NotNull
     private Long destinationId;
+    private Long transportModeId;
+    private Long departurePointId;
+    private Long airlineId;
     private String description;
     @NotNull
     @Min(1)

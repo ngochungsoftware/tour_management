@@ -5,10 +5,17 @@ import DashboardPage from '@/pages/admin/DashboardPage';
 import AdminTourPage from '@/pages/admin/AdminTourPage';
 import AdminBookingPage from '@/pages/admin/AdminBookingPage';
 import AdminUserPage from '@/pages/admin/AdminUserPage';
+import AdminStaffPage from '@/pages/admin/AdminStaffPage';
 import AdminCatalogPage from '@/pages/admin/AdminCatalogPage';
 import AdminCouponPage from '@/pages/admin/AdminCouponPage';
 import AdminReviewPage from '@/pages/admin/AdminReviewPage';
 import AdminTourQaPage from '@/pages/admin/AdminTourQaPage';
+import AdminTourTagPage from '@/pages/admin/AdminTourTagPage';
+import AdminAttractionPage from '@/pages/admin/AdminAttractionPage';
+import AdminDeparturePointPage from '@/pages/admin/AdminDeparturePointPage';
+import AdminTransportModePage from '@/pages/admin/AdminTransportModePage';
+import AdminAirlinePage from '@/pages/admin/AdminAirlinePage';
+import AdminBannerPage from '@/pages/admin/AdminBannerPage';
 import AdminLoginPage from './AdminLoginPage';
 import { useAdminAuth } from './AdminAuthContext';
 import { ReactNode } from 'react';
@@ -86,11 +93,18 @@ const AdminApp = () => {
           <Route path="tours" element={<AdminTourPage />} />
           <Route path="bookings" element={<AdminBookingPage />} />
           <Route path="users" element={<AdminUserPage />} />
+          <Route path="staff" element={<AdminStaffPage />} />
           <Route path="categories" element={<AdminCatalogPage />} />
           <Route path="destinations" element={<AdminCatalogPage />} />
           <Route path="coupons" element={<AdminCouponPage />} />
           <Route path="reviews" element={<AdminReviewPage />} />
           <Route path="tour-qa" element={<AdminTourQaPage />} />
+          <Route path="tour-tags" element={<AdminTourTagPage />} />
+          <Route path="attractions" element={<AdminAttractionPage />} />
+          <Route path="departure-points" element={<AdminDeparturePointPage />} />
+          <Route path="transport-modes" element={<AdminTransportModePage />} />
+          <Route path="airlines" element={<AdminAirlinePage />} />
+          <Route path="banners" element={<AdminBannerPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/admin-portal" replace />} />

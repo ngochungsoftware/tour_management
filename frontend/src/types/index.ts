@@ -23,6 +23,35 @@ export interface UserResponse {
   address?: string;
   avatar?: string;
   roles: string[];
+  /** Trạng thái tài khoản: ACTIVE | LOCKED. */
+  status?: 'ACTIVE' | 'LOCKED';
+  gender?: 'MALE' | 'FEMALE' | 'OTHER';
+  dateOfBirth?: string;
+}
+
+export type RoleName = 'ADMIN' | 'STAFF' | 'CUSTOMER';
+
+export interface UserCreateRequest {
+  fullName: string;
+  email: string;
+  password: string;
+  phone?: string;
+  address?: string;
+  gender?: 'MALE' | 'FEMALE' | 'OTHER';
+  status?: 'ACTIVE' | 'LOCKED';
+  roles: RoleName[];
+}
+
+export interface UserUpdateRequest {
+  fullName: string;
+  email: string;
+  phone?: string;
+  address?: string;
+  gender?: 'MALE' | 'FEMALE' | 'OTHER';
+  status?: 'ACTIVE' | 'LOCKED';
+  roles?: RoleName[];
+  /** Để trống = giữ nguyên mật khẩu hiện tại. */
+  password?: string;
 }
 
 export interface AuthResponse {
@@ -136,6 +165,12 @@ export interface TourDetailResponse {
   categoryName?: string;
   destinationId?: number;
   destinationName?: string;
+  transportModeId?: number | null;
+  transportModeName?: string | null;
+  departurePointId?: number | null;
+  departurePointName?: string | null;
+  airlineId?: number | null;
+  airlineName?: string | null;
   durationDays: number;
   durationNights: number;
   originalPrice?: number;
@@ -148,8 +183,20 @@ export interface TourDetailResponse {
   status?: TourStatus;
   featured?: boolean;
   departureDates: string[];
+  transports?: TourTransportSummary[];
   images: string[];
   itineraries: ItineraryResponse[];
+}
+
+export interface TourTransportSummary {
+  transportModeId: number;
+  transportModeName: string;
+  transportModeIcon?: string | null;
+  departurePointId?: number | null;
+  departurePointName?: string | null;
+  airlineId?: number | null;
+  airlineName?: string | null;
+  airlineCode?: string | null;
 }
 
 export interface TourImageRequest {
@@ -169,6 +216,9 @@ export interface TourCreateRequest {
   name: string;
   categoryId: number;
   destinationId: number;
+  transportModeId?: number | null;
+  departurePointId?: number | null;
+  airlineId?: number | null;
   description?: string;
   durationDays: number;
   durationNights: number;
@@ -195,6 +245,8 @@ export interface TourUpdateRequest {
   maxPeople: number;
   status?: 'ACTIVE' | 'HIDDEN' | 'INACTIVE';
   featured?: boolean;
+  images?: TourImageRequest[];
+  itineraries?: ItineraryRequest[];
 }
 
 export interface TourSearchParams {
@@ -222,6 +274,20 @@ export interface ScheduleResponse {
   totalSeats: number;
   availableSeats: number;
   status: 'OPEN' | 'CLOSED';
+  // Điểm khởi hành
+  departurePointId?: number | null;
+  departurePointName?: string | null;
+  // Phương tiện di chuyển
+  transportModeId?: number | null;
+  transportModeName?: string | null;
+  transportModeIcon?: string | null;
+  // Hãng hàng không
+  airlineId?: number | null;
+  airlineName?: string | null;
+  airlineCode?: string | null;
+  // Giá riêng của chuyến (null = dùng giá tour)
+  adultPrice?: number | null;
+  childPrice?: number | null;
 }
 
 export interface ScheduleRequest {
@@ -230,6 +296,12 @@ export interface ScheduleRequest {
   returnDate: string;
   totalSeats: number;
   status?: 'OPEN' | 'CLOSED';
+  departurePointId?: number | null;
+  transportModeId?: number | null;
+  airlineId?: number | null;
+  clearAirline?: boolean;
+  adultPrice?: number | null;
+  childPrice?: number | null;
 }
 
 // ============== Booking ==============
@@ -271,6 +343,10 @@ export interface BookingRequest {
   infantCount?: number;
   couponCode?: string;
   paymentMethod: 'CASH' | 'BANK_TRANSFER' | 'ONLINE';
+  // Phương tiện khách chọn khi đặt tour
+  transportModeId?: number | null;
+  airlineId?: number | null;
+  departurePointId?: number | null;
   guests: GuestRequest[];
 }
 
@@ -281,6 +357,14 @@ export interface BookingResponse {
   tourName: string;
   tourCode: string;
   departureDate: string;
+  // Phương tiện khách đã chọn
+  transportModeId?: number | null;
+  transportModeName?: string | null;
+  transportModeIcon?: string | null;
+  airlineId?: number | null;
+  airlineName?: string | null;
+  departurePointId?: number | null;
+  departurePointName?: string | null;
   adultCount: number;
   childCount: number;
   infantCount: number;
@@ -414,4 +498,119 @@ export interface TourQaSearchParams {
   sortBy?: QaSortBy;
   page?: number;
   size?: number;
+}
+
+// ============== Tour Tag ==============
+export interface TourTagResponse {
+  id: number;
+  name: string;
+  slug: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  createdAt?: string;
+}
+
+export interface TourTagRequest {
+  name: string;
+  slug: string;
+  status?: 'ACTIVE' | 'INACTIVE';
+}
+
+// ============== Attraction ==============
+export interface AttractionResponse {
+  id: number;
+  name: string;
+  destinationId?: number;
+  destinationName?: string;
+  description?: string;
+  image?: string;
+  address?: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  createdAt?: string;
+}
+
+export interface AttractionRequest {
+  name: string;
+  destinationId: number;
+  description?: string;
+  image?: string;
+  address?: string;
+  status?: 'ACTIVE' | 'INACTIVE';
+}
+
+// ============== Departure Point ==============
+export interface DeparturePointResponse {
+  id: number;
+  name: string;
+  city: string;
+  address?: string;
+  status: 'ACTIVE' | 'INACTIVE';
+}
+
+export interface DeparturePointRequest {
+  name: string;
+  city: string;
+  address?: string;
+  status?: 'ACTIVE' | 'INACTIVE';
+}
+
+// ============== Transport Mode ==============
+export interface TransportModeResponse {
+  id: number;
+  name: string;
+  description?: string;
+  icon?: string;
+  status: 'ACTIVE' | 'INACTIVE';
+}
+
+export interface TransportModeRequest {
+  name: string;
+  description?: string;
+  icon?: string;
+  status?: 'ACTIVE' | 'INACTIVE';
+}
+
+// ============== Airline ==============
+export interface AirlineResponse {
+  id: number;
+  code: string;
+  name: string;
+  logo?: string;
+  status: 'ACTIVE' | 'INACTIVE';
+}
+
+export interface AirlineRequest {
+  code: string;
+  name: string;
+  logo?: string;
+  status?: 'ACTIVE' | 'INACTIVE';
+}
+
+// ============== Banner ==============
+export type BannerPosition = 'HOME_HERO' | 'HOME_SIDE' | 'HOME_MIDDLE' | 'TOUR_LIST' | 'TOUR_DETAIL';
+
+export interface BannerResponse {
+  id: number;
+  title: string;
+  subtitle?: string;
+  imageUrl: string;
+  linkUrl?: string;
+  position: BannerPosition;
+  sortOrder: number;
+  startDate?: string;
+  endDate?: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface BannerRequest {
+  title: string;
+  subtitle?: string;
+  imageUrl: string;
+  linkUrl?: string;
+  position: BannerPosition;
+  sortOrder?: number;
+  startDate?: string;
+  endDate?: string;
+  status?: 'ACTIVE' | 'INACTIVE';
 }

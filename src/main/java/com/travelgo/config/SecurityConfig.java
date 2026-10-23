@@ -47,14 +47,47 @@ public class SecurityConfig {
                                 "/api/v1/tours/**",
                                 "/api/v1/categories/**",
                                 "/api/v1/destinations/**",
+                                "/api/v1/attractions/**",
+                                "/api/v1/tour-tags/**",
+                                "/api/v1/departure-points/**",
+                                "/api/v1/transport-modes/**",
+                                "/api/v1/airlines/**",
+                                "/api/v1/banners/**",
                                 "/api/v1/home/**",
                                 "/api/v1/reviews/tour/**",
                                 "/api/v1/posts/**",
                                 "/api/v1/post-categories/**",
                                 "/api/v1/post-comments/post/**",
-                                "/api/v1/tour-qa/**"
+                                "/api/v1/tour-qa/**",
+                                "/api/v1/schedules/**"
                         ).permitAll()
-                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        // Nhân viên chỉ được DUYỆT vận hành (đơn, tour, hỏi đáp, đánh giá...).
+                        // Các thao tác phá hủy dữ liệu hệ thống / quản lý tài khoản vẫn chỉ ADMIN.
+                        //
+                        // THỨ TỰ RẤT QUAN TRỌNG: các rule hẹp (ADMIN-only) phải nằm TRƯỚC
+                        // rule rộng "/api/v1/admin/**". Spring Security dừng ở rule khớp đầu
+                        // tiên, nên nếu để rule rộng trước thì các rule hẹp bên dưới sẽ
+                        // không bao giờ được áp dụng.
+                        .requestMatchers(
+                                "/api/v1/admin/users/**",
+                                "/api/v1/admin/staff/**",
+                                "/api/v1/admin/customers/**",
+                                "/api/v1/admin/categories/**",
+                                "/api/v1/admin/destinations/**",
+                                "/api/v1/admin/attractions/**",
+                                "/api/v1/admin/tour-tags/**",
+                                "/api/v1/admin/departure-points/**",
+                                "/api/v1/admin/transport-modes/**",
+                                "/api/v1/admin/airlines/**",
+                                "/api/v1/admin/banners/**",
+                                "/api/v1/admin/coupons/**",
+                                "/api/v1/admin/posts/**"
+                        ).hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/admin/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/admin/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/admin/**").hasRole("ADMIN")
+                        // Rule rộng nhất — ĐỂ CUỐI CÙNG, sau tất cả rule hẹp ở trên.
+                        .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "STAFF")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

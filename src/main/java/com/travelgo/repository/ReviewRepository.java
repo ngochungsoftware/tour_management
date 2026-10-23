@@ -8,6 +8,7 @@ import java.util.List;
 
 public interface ReviewRepository extends JpaRepository<Review, Long> {
     boolean existsByBookingId(Long bookingId);
+    long countByUserId(Long userId);
     List<Review> findByTourIdAndStatusOrderByCreatedAtDesc(Long tourId, ReviewStatus status);
     List<Review> findByTourIdOrderByCreatedAtDesc(Long tourId);
 }

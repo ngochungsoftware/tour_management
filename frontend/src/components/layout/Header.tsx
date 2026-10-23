@@ -11,6 +11,7 @@ const NAV_LINKS = [
   { to: '/tours', label: 'Tour', match: '/tours' },
   { to: '/tours?featured=true', label: 'Nổi bật', match: '/tours?featured=true' },
   { to: '/qa/search', label: 'Hỏi đáp', match: '/qa/search' },
+  { to: '/about', label: 'Về chúng tôi' },
 ];
 
 const Header = () => {

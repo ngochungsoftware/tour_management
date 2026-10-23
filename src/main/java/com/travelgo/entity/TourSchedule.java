@@ -4,6 +4,7 @@ import com.travelgo.common.enums.ScheduleStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Getter
@@ -40,4 +41,22 @@ public class TourSchedule {
     @Column(nullable = false, length = 20)
     @Builder.Default
     private ScheduleStatus status = ScheduleStatus.OPEN;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "DEPARTURE_POINT_ID")
+    private DeparturePoint departurePoint;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "TRANSPORT_MODE_ID")
+    private TransportMode transportMode;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "AIRLINE_ID")
+    private Airline airline;
+
+    @Column(name = "ADULT_PRICE", precision = 14, scale = 2)
+    private BigDecimal adultPrice;
+
+    @Column(name = "CHILD_PRICE", precision = 14, scale = 2)
+    private BigDecimal childPrice;
 }

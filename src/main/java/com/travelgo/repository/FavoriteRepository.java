@@ -11,6 +11,8 @@ import java.util.Optional;
 public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
     boolean existsByUserIdAndTourId(Long userId, Long tourId);
     Optional<Favorite> findByUserIdAndTourId(Long userId, Long tourId);
+
+    long countByUserId(Long userId);
     @Query("""
             SELECT f FROM Favorite f
             JOIN FETCH f.tour t

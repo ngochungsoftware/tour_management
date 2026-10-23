@@ -64,4 +64,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
                 OR LOWER(p.excerpt) LIKE LOWER(CONCAT('%', :keyword, '%')))
             """)
     Page<Post> searchPublished(@Param("keyword") String keyword, Pageable pageable);
+
+    /** Dùng để chặn xóa user khi họ còn bài viết. */
+    long countByAuthorId(Long authorId);
 }

@@ -1,12 +1,15 @@
+import { useState } from 'react';
 import { reviewApi } from '@/api/review.api';
 import { useAsync } from '@/hooks/useAsync';
 import { formatDate, formatDateTime } from '@/utils/format';
 import { Spinner, EmptyState, StatusBadge } from '@/components/ui/Feedback';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 import { Eye, EyeOff, Trash2, Star } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const AdminReviewPage = () => {
   const reviews = useAsync(() => reviewApi.adminAll());
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const toggle = async (id: number, status: 'VISIBLE' | 'HIDDEN') => {
     try {
@@ -17,9 +20,11 @@ const AdminReviewPage = () => {
     } catch { /* handled */ }
   };
 
-  const onDelete = async (id: number) => {
-    if (!confirm('Xóa đánh giá?')) return;
-    try { await reviewApi.remove(id); reviews.refetch(); } catch { /* handled */ }
+  const onDelete = async () => {
+    if (deletingId === null) return;
+    const id = deletingId;
+    setDeletingId(null);
+    try { await reviewApi.remove(id); reviews.refetch(); toast.success('Đã xóa'); } catch { /* handled */ }
   };
 
   return (
@@ -54,7 +59,7 @@ const AdminReviewPage = () => {
                   >
                     {r.status === 'VISIBLE' ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
-                  <button onClick={() => onDelete(r.id)} className="rounded p-1 text-red-600 hover:bg-red-50">
+                  <button onClick={() => setDeletingId(r.id)} className="rounded p-1 text-red-600 hover:bg-red-50">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
@@ -63,6 +68,14 @@ const AdminReviewPage = () => {
           ))}
         </div>
       ) : <EmptyState title="Chưa có đánh giá" />}
+      <ConfirmModal
+        open={deletingId !== null}
+        title="Xóa đánh giá?"
+        description="Hành động này không thể hoàn tác."
+        confirmText="Xóa"
+        onConfirm={onDelete}
+        onCancel={() => setDeletingId(null)}
+      />
     </div>
   );
 };

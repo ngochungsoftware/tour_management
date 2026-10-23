@@ -11,6 +11,7 @@ import {
 } from '@/types';
 import { formatVND } from '@/utils/format';
 import { Spinner, EmptyState } from '@/components/ui/Feedback';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 import {
   Edit,
   Trash2,
@@ -46,6 +47,7 @@ const AdminTourPage = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState<{ id: number; name: string } | null>(null);
 
   // Load tours list
   const tours = useAsync<PageResponse<TourResponse>>(
@@ -59,9 +61,9 @@ const AdminTourPage = () => {
     [page, keyword, status],
   );
 
-  // Load chi tiết tour khi edit
+  // Load chi tiết tour khi edit - tự động refetch khi editingId đổi
   const tourDetail = useAsync<TourDetailResponse | null>(
-    async () => (editingId ? await tourApi.detail(editingId) : null),
+    async () => (editingId !== null ? await tourApi.detail(editingId) : null),
     [editingId],
   );
 
@@ -84,12 +86,20 @@ const AdminTourPage = () => {
   };
 
   const handleEdit = (id: number) => {
-    setEditingId(id);
-    setShowForm(true);
+    // Reset về null để TourForm không hiển thị data cũ trong khi đang load detail mới
+    setEditingId(null);
+    setShowForm(false);
+    // Dùng microtask để React unmount TourForm cũ trước khi mount cái mới
+    setTimeout(() => {
+      setEditingId(id);
+      setShowForm(true);
+    }, 0);
   };
 
-  const handleDelete = async (id: number, name: string) => {
-    if (!confirm(`Xóa tour "${name}"?\nHành động này không thể hoàn tác.`)) return;
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    const { id } = deleting;
+    setDeleting(null);
     setActionLoading(id);
     try {
       await tourApi.remove(id);
@@ -134,9 +144,11 @@ const AdminTourPage = () => {
         await tourApi.create(data as TourCreateRequest);
         toast.success('Đã tạo tour mới');
       }
+      // Luôn đóng form và reset state, không phụ thuộc vào việc component có unmount hay không
       setShowForm(false);
       setEditingId(null);
       tours.refetch();
+      return;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Lưu thất bại';
       toast.error(msg);
@@ -362,7 +374,7 @@ const AdminTourPage = () => {
                               )}
                             </button>
                             <button
-                              onClick={() => handleDelete(t.id, t.name)}
+                              onClick={() => setDeleting({ id: t.id, name: t.name })}
                               disabled={isLoading}
                               className="rounded p-1.5 text-red-600 transition hover:bg-red-50 disabled:opacity-50"
                               title="Xóa"
@@ -407,6 +419,7 @@ const AdminTourPage = () => {
 
       {showForm && (
         <TourForm
+          key={editingId ?? 'new'}
           initial={editingId ? (tourDetail.data ?? null) : null}
           onClose={() => {
             setShowForm(false);
@@ -415,6 +428,14 @@ const AdminTourPage = () => {
           onSubmit={handleFormSubmit}
         />
       )}
+      <ConfirmModal
+        open={deleting !== null}
+        title={deleting ? `Xóa tour "${deleting.name}"?` : ''}
+        description="Hành động này không thể hoàn tác. Các booking liên quan có thể bị ảnh hưởng."
+        confirmText="Xóa tour"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleting(null)}
+      />
     </div>
   );
 };

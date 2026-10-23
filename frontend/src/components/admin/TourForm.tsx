@@ -10,11 +10,19 @@ import {
   ScheduleResponse,
   CategoryResponse,
   DestinationResponse,
+  TransportModeResponse,
+  DeparturePointResponse,
+  AirlineResponse,
 } from '@/types';
 import { scheduleApi } from '@/api/schedule.api';
 import { categoryApi } from '@/api/catalog.api';
 import { destinationApi } from '@/api/catalog.api';
-import { X, Plus, Trash2, Calendar, Save, Image as ImageIcon } from 'lucide-react';
+import { transportModeApi } from '@/api/transportMode.api';
+import { departurePointApi } from '@/api/departurePoint.api';
+import { airlineApi } from '@/api/airline.api';
+import { transportIcon } from '@/utils/format';
+import { X, Plus, Trash2, Calendar, Save, Image as ImageIcon, MapPin } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface TourFormProps {
   initial?: TourDetailResponse | null;
@@ -27,6 +35,9 @@ const emptyForm = (): TourCreateRequest => ({
   name: '',
   categoryId: 0,
   destinationId: 0,
+  transportModeId: 0,
+  departurePointId: 0,
+  airlineId: 0,
   description: '',
   durationDays: 3,
   durationNights: 2,
@@ -41,66 +52,112 @@ const emptyForm = (): TourCreateRequest => ({
   itineraries: [],
 });
 
+function buildFormFromInitial(initial: TourDetailResponse): TourCreateRequest {
+  return {
+    code: initial.code,
+    name: initial.name,
+    categoryId: initial.categoryId ?? 0,
+    destinationId: initial.destinationId ?? 0,
+    transportModeId: initial.transportModeId ?? 0,
+    departurePointId: initial.departurePointId ?? 0,
+    airlineId: initial.airlineId ?? 0,
+    description: initial.description ?? '',
+    durationDays: initial.durationDays,
+    durationNights: initial.durationNights,
+    originalPrice: initial.originalPrice ?? 0,
+    adultPrice: initial.adultPrice,
+    childPrice: initial.childPrice,
+    infantPrice: initial.infantPrice,
+    maxPeople: initial.maxPeople,
+    status: initial.status ?? 'ACTIVE',
+    featured: initial.featured ?? false,
+    images:
+      initial.images.length > 0
+        ? initial.images.map((url, idx) => ({ imageUrl: url, cover: idx === 0 }))
+        : [{ imageUrl: '', cover: true }],
+    itineraries: initial.itineraries.map((it) => ({
+      dayNumber: it.dayNumber,
+      title: it.title,
+      description: it.description ?? '',
+    })),
+  };
+}
+
 const TourForm = ({ initial, onClose, onSubmit }: TourFormProps) => {
   const isEdit = !!initial;
-  const [form, setForm] = useState<TourCreateRequest>(() => {
-    if (initial) {
-      return {
-        code: initial.code,
-        name: initial.name,
-        categoryId: initial.categoryId ?? 0,
-        destinationId: initial.destinationId ?? 0,
-        description: initial.description ?? '',
-        durationDays: initial.durationDays,
-        durationNights: initial.durationNights,
-        originalPrice: initial.originalPrice ?? 0,
-        adultPrice: initial.adultPrice,
-        childPrice: initial.childPrice,
-        infantPrice: initial.infantPrice,
-        maxPeople: initial.maxPeople,
-        status: initial.status ?? 'ACTIVE',
-        featured: initial.featured ?? false,
-        images:
-          initial.images.length > 0
-            ? initial.images.map((url, idx) => ({ imageUrl: url, cover: idx === 0 }))
-            : [{ imageUrl: '', cover: true }],
-        itineraries: initial.itineraries.map((it) => ({
-          dayNumber: it.dayNumber,
-          title: it.title,
-          description: it.description ?? '',
-        })),
-      };
-    }
-    return emptyForm();
-  });
+  const [form, setForm] = useState<TourCreateRequest>(() =>
+    initial ? buildFormFromInitial(initial) : emptyForm(),
+  );
 
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [destinations, setDestinations] = useState<DestinationResponse[]>([]);
   const [schedules, setSchedules] = useState<ScheduleResponse[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [newScheduleDate, setNewScheduleDate] = useState('');
+  const [transportModes, setTransportModes] = useState<TransportModeResponse[]>([]);
+  const [departurePoints, setDeparturePoints] = useState<DeparturePointResponse[]>([]);
+  const [airlines, setAirlines] = useState<AirlineResponse[]>([]);
+  const [deletingScheduleId, setDeletingScheduleId] = useState<number | null>(null);
 
-  // Load categories, destinations
+  // Hãng bay chỉ dùng khi phương tiện của tour là máy bay
+  const selectedTransport = transportModes.find(
+    (m) => String(m.id) === String(form.transportModeId || 0),
+  );
+  const isAirTransport = !!selectedTransport?.icon && /plane/i.test(selectedTransport.icon);
+
+  // QUAN TRỌNG: Reset form mỗi khi `initial` thay đổi (mở edit tour khác,
+  // hoặc chuyển từ "add" sang "edit"). Đây là fix chính cho lỗi
+  // "form không đóng / load sai dữ liệu".
   useEffect(() => {
+    setForm(initial ? buildFormFromInitial(initial) : emptyForm());
+    setSchedules([]);
+    setNewScheduleDate('');
+    setSubmitting(false);
+  }, [initial?.id]);
+
+  // Load categories, destinations (chỉ 1 lần)
+  useEffect(() => {
+    let mounted = true;
     categoryApi
       .list()
-      .then(setCategories)
-      .catch(() => setCategories([]));
+      .then((data) => mounted && setCategories(data))
+      .catch(() => mounted && setCategories([]));
     destinationApi
       .list()
-      .then(setDestinations)
-      .catch(() => setDestinations([]));
+      .then((data) => mounted && setDestinations(data))
+      .catch(() => mounted && setDestinations([]));
+    transportModeApi
+      .list()
+      .then((data) => mounted && setTransportModes(data))
+      .catch(() => mounted && setTransportModes([]));
+    departurePointApi
+      .list()
+      .then((data) => mounted && setDeparturePoints(data))
+      .catch(() => mounted && setDeparturePoints([]));
+    airlineApi
+      .list()
+      .then((data) => mounted && setAirlines(data))
+      .catch(() => mounted && setAirlines([]));
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-  // Load schedules nếu edit
+  // Load schedules nếu edit (refetch khi `initial.id` đổi)
   useEffect(() => {
-    if (initial) {
-      scheduleApi
-        .byTour(initial.id)
-        .then(setSchedules)
-        .catch(() => setSchedules([]));
+    if (!initial) {
+      setSchedules([]);
+      return;
     }
-  }, [initial]);
+    let mounted = true;
+    scheduleApi
+      .byTour(initial.id)
+      .then((data) => mounted && setSchedules(data))
+      .catch(() => mounted && setSchedules([]));
+    return () => {
+      mounted = false;
+    };
+  }, [initial?.id]);
 
   const update = <K extends keyof TourCreateRequest>(key: K, value: TourCreateRequest[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -178,17 +235,28 @@ const TourForm = ({ initial, onClose, onSubmit }: TourFormProps) => {
       setSchedules((prev) => [...prev, newSched]);
       setNewScheduleDate('');
     } catch (err) {
-      // handled
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        'Không thể tạo lịch khởi hành';
+      toast.error(msg);
     }
   };
 
   const handleDeleteSchedule = async (id: number) => {
-    if (!confirm('Xóa lịch khởi hành này?')) return;
+    setDeletingScheduleId(id);
+  };
+
+  const confirmDeleteSchedule = async () => {
+    if (deletingScheduleId === null) return;
+    const id = deletingScheduleId;
+    setDeletingScheduleId(null);
     try {
       await scheduleApi.remove(id);
       setSchedules((prev) => prev.filter((s) => s.id !== id));
+      toast.success('Đã xóa lịch khởi hành');
     } catch (err) {
-      // handled
+      const msg = err instanceof Error ? err.message : 'Xóa lịch khởi hành thất bại';
+      toast.error(msg);
     }
   };
 
@@ -197,65 +265,70 @@ const TourForm = ({ initial, onClose, onSubmit }: TourFormProps) => {
 
     // Validation
     if (!form.name.trim()) {
-      alert('Vui lòng nhập tên tour');
+      toast.error('Vui lòng nhập tên tour');
       return;
     }
     if (!isEdit && !form.code.trim()) {
-      alert('Vui lòng nhập mã tour');
+      toast.error('Vui lòng nhập mã tour');
       return;
     }
     if (form.categoryId === 0) {
-      alert('Vui lòng chọn danh mục');
+      toast.error('Vui lòng chọn danh mục');
       return;
     }
     if (form.destinationId === 0) {
-      alert('Vui lòng chọn điểm đến');
+      toast.error('Vui lòng chọn điểm đến');
       return;
     }
     if (form.adultPrice <= 0) {
-      alert('Giá người lớn phải lớn hơn 0');
+      toast.error('Giá người lớn phải lớn hơn 0');
       return;
     }
     if (form.durationDays <= 0) {
-      alert('Số ngày phải lớn hơn 0');
+      toast.error('Số ngày phải lớn hơn 0');
       return;
     }
     if (form.durationNights < 0) {
-      alert('Số đêm không được âm');
+      toast.error('Số đêm không được âm');
       return;
     }
     const validImages = form.images.filter((img) => img.imageUrl.trim());
     if (validImages.length === 0) {
-      alert('Vui lòng thêm ít nhất 1 ảnh');
+      toast.error('Vui lòng thêm ít nhất 1 ảnh');
       return;
     }
     if (!validImages.some((img) => img.cover)) {
-      alert('Vui lòng chọn 1 ảnh bìa');
+      toast.error('Vui lòng chọn 1 ảnh bìa');
       return;
     }
 
     setSubmitting(true);
     try {
       if (isEdit) {
+        // FIX: Gửi đầy đủ images & itineraries khi cập nhật (trước đó thiếu → data không được lưu)
         const updateBody: TourUpdateRequest = {
           name: form.name,
           description: form.description,
           durationDays: form.durationDays,
           durationNights: form.durationNights,
-          originalPrice: form.originalPrice,
           adultPrice: form.adultPrice,
           childPrice: form.childPrice,
-          infantPrice: form.infantPrice,
           maxPeople: form.maxPeople,
           status: form.status,
-          featured: form.featured,
+          featured: form.featured ?? false,
+          // Chỉ gửi khi có giá trị hợp lệ (tránh gửi 0 gây lỗi DB)
+          ...(form.originalPrice && form.originalPrice > 0 ? { originalPrice: form.originalPrice } : {}),
+          ...(form.infantPrice && form.infantPrice > 0 ? { infantPrice: form.infantPrice } : {}),
+          // Gửi kèm images & itineraries đã thay đổi
+          images: validImages,
+          itineraries: form.itineraries,
         };
         await onSubmit(updateBody, true);
       } else {
         await onSubmit({ ...form, images: validImages }, false);
       }
     } catch (err) {
-      // handled
+      // handled ở parent
     } finally {
       setSubmitting(false);
     }
@@ -360,6 +433,66 @@ const TourForm = ({ initial, onClose, onSubmit }: TourFormProps) => {
                 ))}
               </select>
             </div>
+          </div>
+
+          {/* Phương tiện di chuyển - chọn 1 lần cho cả tour, lịch khởi hành tự kế thừa */}
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-slate-600">
+              Phương tiện di chuyển
+            </label>
+            <div className="grid grid-cols-3 gap-3">
+              <select
+                value={form.transportModeId || ''}
+                onChange={(e) => {
+                  update('transportModeId', e.target.value ? Number(e.target.value) : 0);
+                  // Hãng bay chỉ dùng cho máy bay → bỏ hãng bay nếu đổi sang loại khác
+                  const next = transportModes.find((m) => String(m.id) === e.target.value);
+                  if (!next?.icon || !/plane/i.test(next.icon)) update('airlineId', 0);
+                }}
+                className="input"
+              >
+                <option value="">-- Chọn phương tiện --</option>
+                {transportModes.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={form.departurePointId || ''}
+                onChange={(e) =>
+                  update('departurePointId', e.target.value ? Number(e.target.value) : 0)
+                }
+                className="input"
+              >
+                <option value="">-- Điểm khởi hành --</option>
+                {departurePoints.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={form.airlineId || ''}
+                onChange={(e) => update('airlineId', e.target.value ? Number(e.target.value) : 0)}
+                disabled={!isAirTransport}
+                className="input disabled:cursor-not-allowed disabled:opacity-50"
+                title={isAirTransport ? '' : 'Chỉ chọn hãng bay khi phương tiện là máy bay'}
+              >
+                <option value="">
+                  {isAirTransport ? '-- Chọn hãng bay --' : 'Không phải máy bay'}
+                </option>
+                {isAirTransport &&
+                  airlines.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+            <p className="mt-1 text-xs text-slate-400">
+              Phương tiện áp dụng cho toàn bộ lịch khởi hành của tour.
+            </p>
           </div>
 
           {/* Thời lượng */}
@@ -595,17 +728,35 @@ const TourForm = ({ initial, onClose, onSubmit }: TourFormProps) => {
                   <Plus className="h-3.5 w-3.5" />
                 </button>
               </div>
+              <p className="mb-3 text-xs text-amber-700">
+                Lịch mới sẽ tự dùng phương tiện đã chọn ở thông tin tour.
+              </p>
               {schedules.length === 0 ? (
                 <p className="text-xs text-amber-700">Chưa có lịch khởi hành nào</p>
               ) : (
                 <ul className="space-y-1 text-xs">
-                  {schedules.map((s) => (
+                  {schedules.map((s) => {
+                    const Icon = transportIcon(s.transportModeIcon);
+                    return (
                     <li
                       key={s.id}
                       className="flex items-center justify-between rounded border border-amber-200 bg-white px-2 py-1.5"
                     >
                       <span>
                         {s.departureDate} · {s.availableSeats}/{s.totalSeats} chỗ
+                        {s.transportModeName && (
+                          <span className="ml-1.5 inline-flex items-center gap-1 text-slate-500">
+                            <Icon className="h-3 w-3" />
+                            {s.transportModeName}
+                            {s.airlineName ? ` · ${s.airlineName}` : ''}
+                          </span>
+                        )}
+                        {s.departurePointName && (
+                          <span className="ml-1.5 inline-flex items-center gap-1 text-slate-500">
+                            <MapPin className="h-3 w-3" />
+                            {s.departurePointName}
+                          </span>
+                        )}
                       </span>
                       <button
                         type="button"
@@ -615,7 +766,8 @@ const TourForm = ({ initial, onClose, onSubmit }: TourFormProps) => {
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
               )}
             </div>
@@ -641,6 +793,50 @@ const TourForm = ({ initial, onClose, onSubmit }: TourFormProps) => {
           </div>
         </form>
       </div>
+
+      {/* Modal xác nhận xóa lịch khởi hành */}
+      {deletingScheduleId !== null && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setDeletingScheduleId(null)}
+        >
+          <div
+            className="card w-full max-w-md p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-100">
+                <Trash2 className="h-5 w-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-slate-800">
+                  Xóa lịch khởi hành?
+                </h3>
+                <p className="mt-1 text-sm text-slate-600">
+                  Lịch khởi hành này sẽ bị xóa vĩnh viễn. Hành động không thể hoàn tác.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeletingScheduleId(null)}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteSchedule}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700"
+              >
+                <Trash2 className="h-4 w-4" />
+                Xóa lịch khởi hành
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

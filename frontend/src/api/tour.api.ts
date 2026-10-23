@@ -1,4 +1,4 @@
-import { del, get, post, put } from './client';
+import { del, get, patch, post, put } from './client';
 import { HomeResponse, PageResponse, TourCreateRequest, TourDetailResponse, TourResponse, TourSearchParams, TourUpdateRequest } from '@/types';
 
 const buildParams = (params: TourSearchParams) => {
@@ -21,6 +21,6 @@ export const tourApi = {
   create: (body: TourCreateRequest) => post<TourDetailResponse, TourCreateRequest>('/admin/tours', body),
   update: (id: number, body: TourUpdateRequest) => put<TourDetailResponse, TourUpdateRequest>(`/admin/tours/${id}`, body),
   remove: (id: number) => del<void>(`/admin/tours/${id}`),
-  hide: (id: number) => post<TourDetailResponse>(`/admin/tours/${id}/hide`),
-  show: (id: number) => post<TourDetailResponse>(`/admin/tours/${id}/show`),
+  hide: (id: number) => patch<TourDetailResponse>(`/admin/tours/${id}/hide`),
+  show: (id: number) => patch<TourDetailResponse>(`/admin/tours/${id}/show`),
 };

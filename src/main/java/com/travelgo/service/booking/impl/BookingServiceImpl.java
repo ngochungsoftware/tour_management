@@ -1,5 +1,6 @@
 package com.travelgo.service.booking.impl;
 
+import com.travelgo.common.enums.ActiveStatus;
 import com.travelgo.common.enums.BookingStatus;
 import com.travelgo.common.enums.PaymentStatus;
 import com.travelgo.common.enums.ScheduleStatus;
@@ -10,16 +11,22 @@ import com.travelgo.dto.booking.GuestRequest;
 import com.travelgo.entity.Booking;
 import com.travelgo.entity.BookingGuest;
 import com.travelgo.entity.Coupon;
+import com.travelgo.entity.Airline;
+import com.travelgo.entity.DeparturePoint;
 import com.travelgo.entity.Payment;
 import com.travelgo.entity.Tour;
 import com.travelgo.entity.TourSchedule;
+import com.travelgo.entity.TransportMode;
 import com.travelgo.entity.User;
 import com.travelgo.exception.BusinessException;
 import com.travelgo.exception.ForbiddenException;
 import com.travelgo.exception.ResourceNotFoundException;
+import com.travelgo.repository.AirlineRepository;
 import com.travelgo.repository.BookingRepository;
+import com.travelgo.repository.DeparturePointRepository;
 import com.travelgo.repository.TourRepository;
 import com.travelgo.repository.TourScheduleRepository;
+import com.travelgo.repository.TransportModeRepository;
 import com.travelgo.repository.UserRepository;
 import com.travelgo.security.SecurityUtils;
 import com.travelgo.service.booking.BookingService;
@@ -33,6 +40,9 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @Transactional(readOnly = true)
@@ -43,17 +53,26 @@ public class BookingServiceImpl implements BookingService {
     private final TourScheduleRepository scheduleRepository;
     private final UserRepository userRepository;
     private final CouponService couponService;
+    private final TransportModeRepository transportModeRepository;
+    private final AirlineRepository airlineRepository;
+    private final DeparturePointRepository departurePointRepository;
 
     public BookingServiceImpl(BookingRepository bookingRepository,
                               TourRepository tourRepository,
                               TourScheduleRepository scheduleRepository,
                               UserRepository userRepository,
-                              CouponService couponService) {
+                              CouponService couponService,
+                              TransportModeRepository transportModeRepository,
+                              AirlineRepository airlineRepository,
+                              DeparturePointRepository departurePointRepository) {
         this.bookingRepository = bookingRepository;
         this.tourRepository = tourRepository;
         this.scheduleRepository = scheduleRepository;
         this.userRepository = userRepository;
         this.couponService = couponService;
+        this.transportModeRepository = transportModeRepository;
+        this.airlineRepository = airlineRepository;
+        this.departurePointRepository = departurePointRepository;
     }
 
     @Override
@@ -93,6 +112,10 @@ public class BookingServiceImpl implements BookingService {
             throw new BusinessException("Không đủ số chỗ còn lại");
         }
 
+        // Phương tiện: khách được chọn tự do trong danh sách tour cung cấp.
+        // Nếu khách không chọn thì mặc định lấy phương tiện của lịch, hoặc của tour.
+        TransportChoice choice = resolveTransportChoice(request, schedule, tour);
+
         BigDecimal adultTotal = tour.getAdultPrice().multiply(BigDecimal.valueOf(request.getAdultCount()));
         BigDecimal childTotal = tour.getChildPrice().multiply(BigDecimal.valueOf(childCount));
         BigDecimal infantTotal = tour.getInfantPrice().multiply(BigDecimal.valueOf(infantCount));
@@ -114,6 +137,9 @@ public class BookingServiceImpl implements BookingService {
                 .tour(tour)
                 .schedule(schedule)
                 .coupon(coupon)
+                .transportMode(choice.transportMode())
+                .airline(choice.airline())
+                .departurePoint(choice.departurePoint())
                 .adultCount(request.getAdultCount())
                 .childCount(childCount)
                 .infantCount(infantCount)
@@ -211,6 +237,110 @@ public class BookingServiceImpl implements BookingService {
                 .orElseThrow(() -> new ResourceNotFoundException("Booking không tồn tại"));
     }
 
+    /**
+     * Xác định phương tiện khách chọn.
+     * <p>
+     * Danh sách phương tiện hợp lệ được gom từ cấp tour và từ các lịch khởi hành
+     * (lịch chưa gán riêng thì kế thừa từ tour) — giống hệt dữ liệu khách nhìn
+     * thấy ở trang chi tiết tour. Khách chỉ được chọn trong tập đó.
+     * <p>
+     * Nếu khách không chọn gì thì mặc định lấy phương tiện của lịch đang đặt,
+     * fallback sang phương tiện cấp tour.
+     */
+    private TransportChoice resolveTransportChoice(BookingRequest request, TourSchedule schedule, Tour tour) {
+        List<TransportCombo> allowed = allowedTransports(tour);
+
+        Long requestedModeId = request.getTransportModeId();
+        Long requestedAirlineId = request.getAirlineId();
+        Long requestedPointId = request.getDeparturePointId();
+
+        // Khách không chọn → mặc định theo lịch, fallback tour.
+        if (requestedModeId == null && requestedAirlineId == null && requestedPointId == null) {
+            TransportCombo fallback = comboOf(schedule.getTransportMode(), schedule.getDeparturePoint(), schedule.getAirline());
+            if (fallback == null) {
+                fallback = comboOf(tour.getTransportMode(), tour.getDeparturePoint(), tour.getAirline());
+            }
+            if (fallback == null) {
+                return new TransportChoice(null, null, null);
+            }
+            return new TransportChoice(fallback.mode(), fallback.airline(), fallback.departurePoint());
+        }
+
+        if (requestedModeId == null) {
+            throw new BusinessException("Vui lòng chọn phương tiện di chuyển");
+        }
+
+        TransportMode mode = transportModeRepository.findById(requestedModeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Phương tiện di chuyển không tồn tại"));
+        if (mode.getStatus() != ActiveStatus.ACTIVE) {
+            throw new BusinessException("Phương tiện di chuyển đã ngừng hoạt động");
+        }
+
+        // Tìm combo khớp trong danh sách phương tiện của tour.
+        TransportCombo matched = allowed.stream()
+                .filter(c -> c.mode() != null && c.mode().getId().equals(requestedModeId))
+                .filter(c -> requestedAirlineId == null
+                        || (c.airline() != null && c.airline().getId().equals(requestedAirlineId)))
+                .filter(c -> requestedPointId == null
+                        || (c.departurePoint() != null && c.departurePoint().getId().equals(requestedPointId)))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException("Phương tiện di chuyển không thuộc tour này"));
+
+        Airline airline = matched.airline();
+        if (airline == null && requestedAirlineId != null) {
+            airline = airlineRepository.findById(requestedAirlineId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Hãng hàng không không tồn tại"));
+        }
+        DeparturePoint point = matched.departurePoint();
+        if (point == null && requestedPointId != null) {
+            point = departurePointRepository.findById(requestedPointId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Điểm khởi hành không tồn tại"));
+        }
+
+        return new TransportChoice(mode, airline, point);
+    }
+
+    /**
+     * Gom các combo phương tiện khách được phép chọn cho tour này, loại trùng.
+     */
+    private List<TransportCombo> allowedTransports(Tour tour) {
+        Map<String, TransportCombo> unique = new LinkedHashMap<>();
+        addCombo(unique, comboOf(tour.getTransportMode(), tour.getDeparturePoint(), tour.getAirline()));
+        for (TourSchedule schedule : tour.getSchedules()) {
+            if (schedule.getTransportMode() == null) {
+                addCombo(unique, comboOf(tour.getTransportMode(), tour.getDeparturePoint(), tour.getAirline()));
+            } else {
+                addCombo(unique, comboOf(schedule.getTransportMode(), schedule.getDeparturePoint(), schedule.getAirline()));
+            }
+        }
+        return List.copyOf(unique.values());
+    }
+
+    private void addCombo(Map<String, TransportCombo> unique, TransportCombo combo) {
+        if (combo == null || combo.mode() == null) {
+            return;
+        }
+        String key = combo.mode().getId() + "|"
+                + (combo.airline() != null ? combo.airline().getId() : 0) + "|"
+                + (combo.departurePoint() != null ? combo.departurePoint().getId() : 0);
+        unique.putIfAbsent(key, combo);
+    }
+
+    private TransportCombo comboOf(TransportMode mode, DeparturePoint point, Airline airline) {
+        if (mode == null) {
+            return null;
+        }
+        return new TransportCombo(mode, airline, point);
+    }
+
+    /** Combo phương tiện + hãng bay + điểm khởi hành. */
+    private record TransportCombo(TransportMode mode, Airline airline, DeparturePoint departurePoint) {
+    }
+
+    /** Kết quả resolve phương tiện để lưu vào booking. */
+    private record TransportChoice(TransportMode transportMode, Airline airline, DeparturePoint departurePoint) {
+    }
+
     private void cancel(Booking booking) {
         if (booking.getStatus() == BookingStatus.CANCELLED) {
             throw new BusinessException("Booking đã được hủy");
@@ -222,8 +352,7 @@ public class BookingServiceImpl implements BookingService {
             throw new BusinessException("Không cho hủy nếu tour đã bắt đầu");
         }
         if (!booking.getUser().getId().equals(SecurityUtils.currentUserId())
-                && SecurityUtils.currentUser().getRoles().stream()
-                .noneMatch(role -> "ADMIN".equals(role.getName().name()))) {
+                && !SecurityUtils.isStaff()) {
             throw new ForbiddenException("Không có quyền hủy booking này");
         }
         booking.setStatus(BookingStatus.CANCELLED);
@@ -256,6 +385,13 @@ public class BookingServiceImpl implements BookingService {
                 .tourName(booking.getTour() != null ? booking.getTour().getName() : null)
                 .tourCode(booking.getTour() != null ? booking.getTour().getCode() : null)
                 .departureDate(booking.getSchedule() != null ? booking.getSchedule().getDepartureDate() : null)
+                .transportModeId(booking.getTransportMode() != null ? booking.getTransportMode().getId() : null)
+                .transportModeName(booking.getTransportMode() != null ? booking.getTransportMode().getName() : null)
+                .transportModeIcon(booking.getTransportMode() != null ? booking.getTransportMode().getIcon() : null)
+                .airlineId(booking.getAirline() != null ? booking.getAirline().getId() : null)
+                .airlineName(booking.getAirline() != null ? booking.getAirline().getName() : null)
+                .departurePointId(booking.getDeparturePoint() != null ? booking.getDeparturePoint().getId() : null)
+                .departurePointName(booking.getDeparturePoint() != null ? booking.getDeparturePoint().getName() : null)
                 .adultCount(booking.getAdultCount())
                 .childCount(booking.getChildCount())
                 .infantCount(booking.getInfantCount())

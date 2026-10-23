@@ -27,6 +27,11 @@ public class BookingRequest {
     private String couponCode;
     @NotNull
     private PaymentMethod paymentMethod;
+    // Phương tiện khách chọn (optional). Nếu không chọn thì mặc định lấy phương tiện
+    // của lịch khởi hành, hoặc của tour nếu lịch chưa gán riêng.
+    private Long transportModeId;
+    private Long airlineId;
+    private Long departurePointId;
     @NotEmpty
     @Valid
     private List<GuestRequest> guests;

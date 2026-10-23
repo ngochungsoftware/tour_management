@@ -4,6 +4,7 @@ import com.travelgo.common.enums.TourStatus;
 import com.travelgo.dto.tour.TourCreateRequest;
 import com.travelgo.dto.tour.TourDetailResponse;
 import com.travelgo.dto.tour.TourResponse;
+import com.travelgo.dto.tour.TourUpdateRequest;
 import com.travelgo.entity.Tour;
 import com.travelgo.util.PageResponse;
 import org.springframework.data.domain.Pageable;
@@ -32,6 +33,7 @@ public interface TourService {
     List<TourResponse> related(Long tourId);
     TourDetailResponse create(TourCreateRequest request);
     TourDetailResponse update(Long id, TourCreateRequest request);
+    TourDetailResponse update(Long id, TourUpdateRequest request);
     void delete(Long id);
     TourDetailResponse changeVisibility(Long id, TourStatus status);
     Tour find(Long id);

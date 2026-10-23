@@ -30,7 +30,7 @@ export const AdminAuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(() => adminTokenStorage.get());
   const [loading, setLoading] = useState<boolean>(!!adminTokenStorage.get());
 
-  // Verify token khi mount - gọi endpoint admin (yêu cầu ADMIN role)
+  // Verify token khi mount - gọi endpoint admin (yêu cầu ADMIN hoặc STAFF)
   useEffect(() => {
     const verify = async () => {
       if (!adminTokenStorage.get()) {
@@ -49,7 +49,7 @@ export const AdminAuthProvider = ({ children }: { children: ReactNode }) => {
         }
         setLoading(false);
       } catch {
-        // Token invalid hoặc không phải admin
+        // Token invalid hoặc không phải nhân viên
         clearAdminAuth();
         setUser(null);
         setToken(null);
@@ -61,11 +61,14 @@ export const AdminAuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = useCallback(async (req: LoginRequest): Promise<void> => {
     // Login vẫn dùng endpoint client /auth/login
-    // Sau đó verify role admin bằng cách gọi /admin/dashboard
+    // Sau đó verify role bằng cách gọi /admin/dashboard (chỉ ADMIN/STAFF mới qua)
     const res = await authApi.login(req);
 
-    if (!res.user.roles?.includes('ADMIN')) {
-      throw new Error('Tài khoản này không có quyền admin');
+    const roles = res.user.roles ?? [];
+    const isAdmin = roles.includes('ADMIN');
+    const isStaff = roles.includes('STAFF');
+    if (!isAdmin && !isStaff) {
+      throw new Error('Tài khoản này không có quyền truy cập trang quản trị');
     }
 
     adminTokenStorage.set(res.token);

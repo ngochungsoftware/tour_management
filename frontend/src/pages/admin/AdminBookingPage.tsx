@@ -5,10 +5,12 @@ import { BookingResponse, PageResponse } from '@/types';
 import {
   formatVND,
   formatDate,
+  timeAgo,
   bookingStatusBadge,
   bookingStatusLabel,
 } from '@/utils/format';
 import { Spinner, EmptyState } from '@/components/ui/Feedback';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 import {
   CheckCircle2,
   XCircle,
@@ -32,6 +34,7 @@ const AdminBookingPage = () => {
   const [status, setStatus] = useState<StatusFilter>('ALL');
   const [viewing, setViewing] = useState<BookingResponse | null>(null);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [pendingAction, setPendingAction] = useState<{ id: number; type: 'confirm' | 'cancel' | 'complete' } | null>(null);
 
   const bookings = useAsync<PageResponse<BookingResponse>>(
     () => bookingApi.adminSearch(page, 10, keyword, status === 'ALL' ? undefined : status),
@@ -51,18 +54,24 @@ const AdminBookingPage = () => {
     bookings.refetch();
   };
 
-  const action = async (id: number, type: 'confirm' | 'cancel' | 'complete') => {
-    const map = { confirm: 'Xác nhận', cancel: 'Hủy', complete: 'Hoàn thành' };
-    if (!confirm(`${map[type]} đơn này?`)) return;
+  const confirmAction = async () => {
+    if (!pendingAction) return;
+    const { id, type } = pendingAction;
+    const labels = {
+      confirm: { done: 'Đã xác nhận đơn', err: 'Xác nhận đơn thất bại' },
+      cancel: { done: 'Đã hủy đơn', err: 'Hủy đơn thất bại' },
+      complete: { done: 'Đã đánh dấu hoàn thành', err: 'Đánh dấu hoàn thành thất bại' },
+    } as const;
+    setPendingAction(null);
     setActionLoading(id);
     try {
       if (type === 'confirm') await bookingApi.confirm(id);
       else if (type === 'cancel') await bookingApi.cancelByAdmin(id);
-      else if (type === 'complete') await bookingApi.complete(id);
-      toast.success(`Đã ${map[type].toLowerCase()} đơn`);
+      else await bookingApi.complete(id);
+      toast.success(labels[type].done);
       bookings.refetch();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Thao tác thất bại';
+      const msg = err instanceof Error ? err.message : labels[type].err;
       toast.error(msg);
     } finally {
       setActionLoading(null);
@@ -103,7 +112,7 @@ const AdminBookingPage = () => {
               onChange={(e) => setSearchInput(e.target.value)}
               onKeyDown={handleSearchKey}
               placeholder="Tìm theo mã đơn hoặc tên tour..."
-              className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm focus:border-brand-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm transition focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100"
             />
           </div>
           <select
@@ -112,7 +121,7 @@ const AdminBookingPage = () => {
               setStatus(e.target.value as StatusFilter);
               setPage(0);
             }}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            className="rounded-lg border border-slate-200 px-3 py-2 text-sm transition focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100"
           >
             <option value="ALL">Tất cả trạng thái</option>
             <option value="PENDING">Chờ xác nhận</option>
@@ -122,8 +131,10 @@ const AdminBookingPage = () => {
           </select>
           <button
             onClick={handleSearch}
-            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+            disabled={bookings.loading}
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-50"
           >
+            {bookings.loading && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
             Tìm
           </button>
         </div>
@@ -180,23 +191,27 @@ const AdminBookingPage = () => {
                     const isLoading = actionLoading === b.id;
                     return (
                       <tr key={b.id} className="transition hover:bg-slate-50">
-                        <td className="px-4 py-3 font-mono text-xs font-semibold text-slate-700">
-                          {b.bookingCode}
+                        <td className="px-4 py-3">
+                          <div className="font-mono text-xs font-semibold text-slate-700">
+                            {b.bookingCode}
+                          </div>
+                          <div className="mt-0.5 text-[11px] text-slate-400">
+                            {timeAgo(b.createdAt)}
+                          </div>
                         </td>
                         <td className="max-w-[240px] truncate px-4 py-3" title={b.tourName}>
                           {b.tourName}
                         </td>
-                        <td className="px-4 py-3 text-xs text-slate-600">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {formatDate(b.departureDate)}
-                          </div>
+                        <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-600">
+                          <Calendar className="mr-1 inline h-3 w-3 text-slate-400" />
+                          {formatDate(b.departureDate)}
                         </td>
                         <td className="px-4 py-3 text-xs">
-                          <div className="flex items-center gap-1 text-slate-600">
-                            <UsersIcon className="h-3 w-3" /> {b.totalPeople}
+                          <div className="whitespace-nowrap text-slate-700">
+                            <UsersIcon className="mr-1 inline h-3 w-3 text-slate-400" />
+                            {b.totalPeople} người
                           </div>
-                          <div className="text-[10px] text-slate-400">
+                          <div className="mt-0.5 whitespace-nowrap text-[11px] text-slate-400">
                             {b.adultCount} NL · {b.childCount} TE · {b.infantCount} EB
                           </div>
                         </td>
@@ -219,7 +234,7 @@ const AdminBookingPage = () => {
                             </button>
                             {b.status === 'PENDING' && (
                               <button
-                                onClick={() => action(b.id, 'confirm')}
+                                onClick={() => setPendingAction({ id: b.id, type: 'confirm' })}
                                 disabled={isLoading}
                                 className="rounded p-1.5 text-sky-600 transition hover:bg-sky-50 disabled:opacity-50"
                                 title="Xác nhận"
@@ -230,7 +245,7 @@ const AdminBookingPage = () => {
                             {(b.status === 'PENDING' || b.status === 'CONFIRMED') && (
                               <>
                                 <button
-                                  onClick={() => action(b.id, 'complete')}
+                                  onClick={() => setPendingAction({ id: b.id, type: 'complete' })}
                                   disabled={isLoading}
                                   className="rounded p-1.5 text-emerald-600 transition hover:bg-emerald-50 disabled:opacity-50"
                                   title="Hoàn thành"
@@ -238,7 +253,7 @@ const AdminBookingPage = () => {
                                   <Award className="h-4 w-4" />
                                 </button>
                                 <button
-                                  onClick={() => action(b.id, 'cancel')}
+                                  onClick={() => setPendingAction({ id: b.id, type: 'cancel' })}
                                   disabled={isLoading}
                                   className="rounded p-1.5 text-red-600 transition hover:bg-red-50 disabled:opacity-50"
                                   title="Hủy đơn"
@@ -290,6 +305,18 @@ const AdminBookingPage = () => {
           onStatusChange={() => bookings.refetch()}
         />
       )}
+      <ConfirmModal
+        open={pendingAction !== null}
+        title={
+          pendingAction
+            ? `${pendingAction.type === 'confirm' ? 'Xác nhận' : pendingAction.type === 'cancel' ? 'Hủy' : 'Hoàn thành'} đơn này?`
+            : ''
+        }
+        description="Hành động này sẽ thay đổi trạng thái đơn đặt tour."
+        confirmText={pendingAction ? (pendingAction.type === 'confirm' ? 'Xác nhận' : pendingAction.type === 'cancel' ? 'Hủy đơn' : 'Hoàn thành') : 'Xác nhận'}
+        onConfirm={confirmAction}
+        onCancel={() => setPendingAction(null)}
+      />
     </div>
   );
 };

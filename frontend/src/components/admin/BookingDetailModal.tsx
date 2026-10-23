@@ -8,11 +8,10 @@ import {
   paymentStatusLabel,
   paymentStatusBadge,
   paymentMethodLabel,
+  genderLabel,
 } from '@/utils/format';
 import {
   X,
-  Phone,
-  Mail,
   User,
   MapPin,
   Users,
@@ -24,7 +23,31 @@ import {
 } from 'lucide-react';
 import { bookingApi } from '@/api/booking.api';
 import toast from 'react-hot-toast';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import ConfirmModal from '@/components/ui/ConfirmModal';
+
+type ActionType = 'confirm' | 'cancel' | 'complete';
+
+const ACTION_LABEL: Record<ActionType, { verb: string; title: string; confirmText: string; variant: 'danger' | 'primary' }> = {
+  confirm: {
+    verb: 'Xác nhận',
+    title: 'Xác nhận đơn đặt tour này?',
+    confirmText: 'Xác nhận đơn',
+    variant: 'primary',
+  },
+  cancel: {
+    verb: 'Hủy',
+    title: 'Hủy đơn đặt tour này?',
+    confirmText: 'Hủy đơn',
+    variant: 'danger',
+  },
+  complete: {
+    verb: 'Hoàn thành',
+    title: 'Đánh dấu đơn đã hoàn thành?',
+    confirmText: 'Hoàn thành',
+    variant: 'primary',
+  },
+};
 
 interface BookingDetailModalProps {
   booking: BookingResponse;
@@ -33,17 +56,17 @@ interface BookingDetailModalProps {
 }
 
 const BookingDetailModal = ({ booking, onClose, onStatusChange }: BookingDetailModalProps) => {
-  const [actionLoading, setActionLoading] = useState<'confirm' | 'cancel' | 'complete' | null>(null);
+  const [actionLoading, setActionLoading] = useState<ActionType | null>(null);
+  const [pendingAction, setPendingAction] = useState<ActionType | null>(null);
 
-  const handleAction = async (type: 'confirm' | 'cancel' | 'complete') => {
-    const map = { confirm: 'Xác nhận', cancel: 'Hủy', complete: 'Hoàn thành' };
-    if (!confirm(`${map[type]} đơn này?`)) return;
+  const handleAction = async (type: ActionType) => {
+    setPendingAction(null);
     setActionLoading(type);
     try {
       if (type === 'confirm') await bookingApi.confirm(booking.id);
       else if (type === 'cancel') await bookingApi.cancelByAdmin(booking.id);
-      else if (type === 'complete') await bookingApi.complete(booking.id);
-      toast.success(`Đã ${map[type].toLowerCase()} đơn`);
+      else await bookingApi.complete(booking.id);
+      toast.success(`Đã ${ACTION_LABEL[type].verb.toLowerCase()} đơn`);
       onStatusChange?.();
       onClose();
     } catch (err) {
@@ -57,6 +80,26 @@ const BookingDetailModal = ({ booking, onClose, onStatusChange }: BookingDetailM
   const showConfirm = booking.status === 'PENDING';
   const showCompleteOrCancel =
     booking.status === 'PENDING' || booking.status === 'CONFIRMED';
+
+  // Đóng modal bằng phím Escape + khoá scroll body khi modal mở
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (pendingAction) setPendingAction(null);
+        else onClose();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [pendingAction, onClose]);
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
 
   return (
     <div
@@ -106,12 +149,17 @@ const BookingDetailModal = ({ booking, onClose, onStatusChange }: BookingDetailM
             <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
               <Users className="h-3.5 w-3.5" /> Hành khách ({booking.totalPeople})
             </div>
-            <ul className="space-y-1 text-xs text-slate-700">
+            <ul className="space-y-1.5 text-xs text-slate-700">
               {booking.guests.map((g) => (
-                <li key={g.id} className="flex items-center gap-2">
-                  <User className="h-3 w-3 text-slate-400" />
-                  <span className="font-medium">{g.fullName}</span>
-                  <span className="text-slate-400">({g.gender})</span>
+                <li
+                  key={g.id}
+                  className="flex items-center justify-between gap-2 rounded-md bg-slate-50 px-2 py-1.5"
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    <User className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                    <span className="truncate font-medium">{g.fullName}</span>
+                  </span>
+                  <span className="shrink-0 text-slate-500">{genderLabel(g.gender)}</span>
                 </li>
               ))}
             </ul>
@@ -163,7 +211,7 @@ const BookingDetailModal = ({ booking, onClose, onStatusChange }: BookingDetailM
           <div className="sticky bottom-0 flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 bg-slate-50 p-4">
             {showCompleteOrCancel && (
               <button
-                onClick={() => handleAction('cancel')}
+                onClick={() => setPendingAction('cancel')}
                 disabled={actionLoading !== null}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
               >
@@ -173,7 +221,7 @@ const BookingDetailModal = ({ booking, onClose, onStatusChange }: BookingDetailM
             )}
             {showCompleteOrCancel && (
               <button
-                onClick={() => handleAction('complete')}
+                onClick={() => setPendingAction('complete')}
                 disabled={actionLoading !== null}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-medium text-emerald-600 transition hover:bg-emerald-50 disabled:opacity-50"
               >
@@ -183,7 +231,7 @@ const BookingDetailModal = ({ booking, onClose, onStatusChange }: BookingDetailM
             )}
             {showConfirm && (
               <button
-                onClick={() => handleAction('confirm')}
+                onClick={() => setPendingAction('confirm')}
                 disabled={actionLoading !== null}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-sky-700 disabled:opacity-50"
               >
@@ -194,6 +242,16 @@ const BookingDetailModal = ({ booking, onClose, onStatusChange }: BookingDetailM
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        open={pendingAction !== null}
+        title={pendingAction ? ACTION_LABEL[pendingAction].title : ''}
+        description="Hành động này sẽ thay đổi trạng thái đơn đặt tour."
+        confirmText={pendingAction ? ACTION_LABEL[pendingAction].confirmText : 'Xác nhận'}
+        variant={pendingAction ? ACTION_LABEL[pendingAction].variant : 'danger'}
+        onConfirm={() => pendingAction && handleAction(pendingAction)}
+        onCancel={() => setPendingAction(null)}
+      />
     </div>
   );
 };

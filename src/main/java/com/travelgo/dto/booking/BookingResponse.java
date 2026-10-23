@@ -19,6 +19,13 @@ public class BookingResponse {
     private String tourName;
     private String tourCode;
     private LocalDate departureDate;
+    private Long transportModeId;
+    private String transportModeName;
+    private String transportModeIcon;
+    private Long airlineId;
+    private String airlineName;
+    private Long departurePointId;
+    private String departurePointName;
     private Integer adultCount;
     private Integer childCount;
     private Integer infantCount;

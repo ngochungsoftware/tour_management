@@ -16,6 +16,7 @@ import FavoritesPage from '@/pages/favorite/FavoritesPage';
 import MyQuestionsPage from '@/pages/qa/MyQuestionsPage';
 import QaSearchPage from '@/pages/qa/QaSearchPage';
 import NotFoundPage from '@/pages/notFound/NotFoundPage';
+import AboutPage from '@/pages/about/AboutPage';
 import AdminApp from '@/admin/AdminApp';
 import { useAuth } from '@/context/AuthContext';
 import { ReactNode } from 'react';
@@ -59,6 +60,7 @@ const App = () => {
             <Route path="/profile" element={<Protected><ProfilePage /></Protected>} />
             <Route path="/qa/my" element={<Protected><MyQuestionsPage /></Protected>} />
             <Route path="/qa/search" element={<QaSearchPage />} />
+            <Route path="/about" element={<AboutPage />} />
 
             {/* Redirect /admin cũ sang /admin-portal để tương thích */}
             <Route path="/admin" element={<Navigate to="/admin-portal" replace />} />

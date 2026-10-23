@@ -44,7 +44,10 @@ class TourServiceTest {
         when(tourRepository.findAll(any(Specification.class), any(PageRequest.class)))
                 .thenReturn(new PageImpl<>(List.of(tour)));
 
-        var result = tourService.search("Đà Nẵng", null, null, null, null, null, null, TourStatus.ACTIVE, PageRequest.of(0, 10));
+        // Signature hiện tại: search(keyword, categoryId, destinationId, minPrice,
+        // maxPrice, durationDays, departureDate, status, featured, discount, pageable)
+        var result = tourService.search("Đà Nẵng", null, null, null, null, null, null,
+                TourStatus.ACTIVE, null, null, PageRequest.of(0, 10));
         assertThat(result.getContent()).hasSize(1);
         assertThat(result.getContent().get(0).getName()).isEqualTo("Đà Nẵng");
     }

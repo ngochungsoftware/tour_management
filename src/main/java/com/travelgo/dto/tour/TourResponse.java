@@ -1,5 +1,6 @@
 package com.travelgo.dto.tour;
 
+import com.travelgo.common.enums.TourStatus;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -15,6 +16,8 @@ public class TourResponse {
     private String coverImage;
     private String destinationName;
     private String categoryName;
+    private String transportModeName;
+    private String transportModeIcon;
     private BigDecimal originalPrice;
     private BigDecimal adultPrice;
     private BigDecimal childPrice;
@@ -22,4 +25,5 @@ public class TourResponse {
     private Integer reviewCount;
     private Integer durationDays;
     private Boolean featured;
+    private TourStatus status;
 }

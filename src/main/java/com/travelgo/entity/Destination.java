@@ -4,6 +4,9 @@ import com.travelgo.common.enums.ActiveStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -34,4 +37,8 @@ public class Destination {
     @Column(nullable = false, length = 20)
     @Builder.Default
     private ActiveStatus status = ActiveStatus.ACTIVE;
+
+    @OneToMany(mappedBy = "destination", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<Attraction> attractions = new ArrayList<>();
 }

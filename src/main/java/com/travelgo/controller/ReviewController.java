@@ -25,6 +25,15 @@ public class ReviewController {
         return ApiResponse.ok(reviewService.byTour(tourId));
     }
 
+    /**
+     * Kiểm tra người dùng hiện tại đã đánh giá booking này chưa.
+     * Trả về { "reviewed": true/false }.
+     */
+    @GetMapping("/booking/{bookingId}/reviewed")
+    public ApiResponse<Boolean> hasReviewed(@PathVariable Long bookingId) {
+        return ApiResponse.ok(reviewService.hasReviewed(bookingId));
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<ReviewResponse> create(@Valid @RequestBody ReviewRequest request) {

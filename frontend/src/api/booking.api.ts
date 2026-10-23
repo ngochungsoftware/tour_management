@@ -1,4 +1,4 @@
-import { get, post } from './client';
+import { get, patch, post } from './client';
 import { BookingRequest, BookingResponse, PageResponse, PaymentResponse } from '@/types';
 
 export const bookingApi = {
@@ -24,9 +24,9 @@ export const bookingApi = {
       status: status || undefined,
     }),
   adminGet: (id: number) => get<BookingResponse>(`/admin/bookings/${id}`),
-  confirm: (id: number) => post<BookingResponse>(`/admin/bookings/${id}/confirm`),
-  complete: (id: number) => post<BookingResponse>(`/admin/bookings/${id}/complete`),
-  cancelByAdmin: (id: number) => post<BookingResponse>(`/admin/bookings/${id}/cancel`),
+  confirm: (id: number) => patch<BookingResponse>(`/admin/bookings/${id}/confirm`),
+  complete: (id: number) => patch<BookingResponse>(`/admin/bookings/${id}/complete`),
+  cancelByAdmin: (id: number) => patch<BookingResponse>(`/admin/bookings/${id}/cancel`),
   byUser: (userId: number, page = 0, size = 10) =>
     get<PageResponse<BookingResponse>>(`/admin/users/${userId}/bookings`, { page, size }),
 };

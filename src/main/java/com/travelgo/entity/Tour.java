@@ -37,6 +37,20 @@ public class Tour {
     @JoinColumn(name = "DESTINATION_ID", nullable = false)
     private Destination destination;
 
+    // Phương tiện di chuyển chính của tour — chọn 1 lần ở cấp tour,
+    // các lịch khởi hành sẽ kế thừa (có thể gán đè riêng nếu cần).
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "TRANSPORT_MODE_ID")
+    private TransportMode transportMode;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "DEPARTURE_POINT_ID")
+    private DeparturePoint departurePoint;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "AIRLINE_ID")
+    private Airline airline;
+
     @Lob
     private String description;
 
@@ -97,6 +111,18 @@ public class Tour {
     @OneToMany(mappedBy = "tour", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<TourSchedule> schedules = new ArrayList<>();
+
+    @OneToMany(mappedBy = "tour", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<TourTagMap> tourTags = new ArrayList<>();
+
+    @OneToMany(mappedBy = "tour", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<TourDestination> tourDestinations = new ArrayList<>();
+
+    @OneToMany(mappedBy = "tour", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<TourAttraction> tourAttractions = new ArrayList<>();
 
     @PrePersist
     void prePersist() {

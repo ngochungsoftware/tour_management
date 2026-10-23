@@ -21,4 +21,6 @@ public interface QaReplyRepository extends JpaRepository<QaReply, Long> {
                                       @Param("status") ActiveStatus status);
 
     long countByQaIdAndStatus(Long qaId, ActiveStatus status);
+
+    long countByUserId(Long userId);
 }

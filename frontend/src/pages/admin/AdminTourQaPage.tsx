@@ -4,6 +4,7 @@ import { tourQaApi } from '@/api/tourqa.api';
 import { useAsync } from '@/hooks/useAsync';
 import { formatDateTime, timeAgo } from '@/utils/format';
 import { Spinner, EmptyState, StatusBadge } from '@/components/ui/Feedback';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 import {
   Search,
   Trash2,
@@ -27,6 +28,7 @@ const AdminTourQaPage = () => {
     size: 10,
   });
   const [debouncedKeyword, setDebouncedKeyword] = useState('');
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedKeyword(filters.keyword || ''), 400);
@@ -58,8 +60,10 @@ const AdminTourQaPage = () => {
     setFilters((prev) => ({ ...prev, [key]: value, page: 0 }));
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Xóa câu hỏi này?')) return;
+  const handleDelete = async () => {
+    if (deletingId === null) return;
+    const id = deletingId;
+    setDeletingId(null);
     try {
       await tourQaApi.adminDelete(id);
       refetch();
@@ -181,7 +185,7 @@ const AdminTourQaPage = () => {
                     {q.status === 'ACTIVE' ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                   <button
-                    onClick={() => handleDelete(q.id)}
+                    onClick={() => setDeletingId(q.id)}
                     className="rounded p-1 text-red-600 hover:bg-red-50"
                     title="Xóa"
                   >
@@ -215,6 +219,14 @@ const AdminTourQaPage = () => {
           </button>
         </div>
       )}
+      <ConfirmModal
+        open={deletingId !== null}
+        title="Xóa câu hỏi?"
+        description="Hành động này không thể hoàn tác."
+        confirmText="Xóa"
+        onConfirm={handleDelete}
+        onCancel={() => setDeletingId(null)}
+      />
     </div>
   );
 };

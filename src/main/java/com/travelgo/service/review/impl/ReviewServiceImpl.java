@@ -44,6 +44,11 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     @Override
+    public boolean hasReviewed(Long bookingId) {
+        return reviewRepository.existsByBookingId(bookingId);
+    }
+
+    @Override
     @Transactional
     public ReviewResponse create(ReviewRequest request) {
         Booking booking = bookingRepository.findByIdAndUserId(request.getBookingId(), SecurityUtils.currentUserId())

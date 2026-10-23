@@ -8,6 +8,7 @@ import java.util.List;
 
 public interface ScheduleService {
     List<ScheduleResponse> findByTour(Long tourId);
+    List<ScheduleResponse> findAll();
     ScheduleResponse get(Long id);
     ScheduleResponse create(ScheduleRequest request);
     ScheduleResponse update(Long id, ScheduleRequest request);

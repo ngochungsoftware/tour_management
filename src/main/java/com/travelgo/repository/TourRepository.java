@@ -36,14 +36,13 @@ public interface TourRepository extends JpaRepository<Tour, Long>, JpaSpecificat
             """)
     List<Tour> findDiscountedTours();
 
-    @Query("""
-            SELECT t FROM Tour t
-            JOIN FETCH t.category
-            JOIN FETCH t.destination
-            WHERE t.id = :id
-            """)
+    @EntityGraph(attributePaths = {"category", "destination", "images"})
+    @Query("SELECT t FROM Tour t WHERE t.id = :id")
     Optional<Tour> findDetailById(@Param("id") Long id);
 
     @EntityGraph(attributePaths = {"category", "destination", "images"})
     List<Tour> findTop6ByStatusAndDestinationIdAndIdNot(TourStatus status, Long destinationId, Long id);
+
+    @Query("SELECT t FROM Tour t WHERE t.id NOT IN (SELECT s.tour.id FROM TourSchedule s)")
+    List<Tour> findToursWithoutSchedules();
 }

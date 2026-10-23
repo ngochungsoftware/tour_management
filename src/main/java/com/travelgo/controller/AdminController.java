@@ -2,11 +2,19 @@ package com.travelgo.controller;
 
 import com.travelgo.common.enums.*;
 import com.travelgo.dto.admin.DashboardResponse;
+import com.travelgo.dto.airline.AirlineRequest;
+import com.travelgo.dto.airline.AirlineResponse;
+import com.travelgo.dto.attraction.AttractionRequest;
+import com.travelgo.dto.attraction.AttractionResponse;
+import com.travelgo.dto.banner.BannerRequest;
+import com.travelgo.dto.banner.BannerResponse;
 import com.travelgo.dto.booking.BookingResponse;
 import com.travelgo.dto.category.CategoryRequest;
 import com.travelgo.dto.category.CategoryResponse;
 import com.travelgo.dto.coupon.CouponRequest;
 import com.travelgo.dto.coupon.CouponResponse;
+import com.travelgo.dto.departure.DeparturePointRequest;
+import com.travelgo.dto.departure.DeparturePointResponse;
 import com.travelgo.dto.destination.DestinationRequest;
 import com.travelgo.dto.destination.DestinationResponse;
 import com.travelgo.dto.payment.PaymentResponse;
@@ -24,12 +32,22 @@ import com.travelgo.dto.tour.TourCreateRequest;
 import com.travelgo.dto.tour.TourDetailResponse;
 import com.travelgo.dto.tour.TourResponse;
 import com.travelgo.dto.tour.TourUpdateRequest;
+import com.travelgo.dto.tourtag.TourTagRequest;
+import com.travelgo.dto.tourtag.TourTagResponse;
+import com.travelgo.dto.transport.TransportModeRequest;
+import com.travelgo.dto.transport.TransportModeResponse;
+import com.travelgo.dto.user.UserCreateRequest;
 import com.travelgo.dto.user.UserResponse;
+import com.travelgo.dto.user.UserUpdateRequest;
 import com.travelgo.entity.Tour;
 import com.travelgo.service.admin.AdminService;
+import com.travelgo.service.airline.AirlineService;
+import com.travelgo.service.attraction.AttractionService;
+import com.travelgo.service.banner.BannerService;
 import com.travelgo.service.booking.BookingService;
 import com.travelgo.service.category.CategoryService;
 import com.travelgo.service.coupon.CouponService;
+import com.travelgo.service.departure.DeparturePointService;
 import com.travelgo.service.destination.DestinationService;
 import com.travelgo.service.payment.PaymentService;
 import com.travelgo.service.post.PostCommentService;
@@ -38,6 +56,8 @@ import com.travelgo.service.review.ReviewService;
 import com.travelgo.service.tourqa.TourQaService;
 import com.travelgo.service.schedule.ScheduleService;
 import com.travelgo.service.tour.TourService;
+import com.travelgo.service.tourtag.TourTagService;
+import com.travelgo.service.transport.TransportModeService;
 import com.travelgo.util.ApiResponse;
 import com.travelgo.util.PageResponse;
 import jakarta.validation.Valid;
@@ -49,10 +69,15 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/v1/admin")
 public class AdminController {
+
+    private static final Set<RoleName> STAFF_ROLES = Set.of(RoleName.ADMIN, RoleName.STAFF);
+
+    private static final Set<RoleName> CUSTOMER_ROLES = Set.of(RoleName.CUSTOMER);
 
     private final AdminService adminService;
     private final BookingService bookingService;
@@ -66,6 +91,12 @@ public class AdminController {
     private final PostService postService;
     private final PostCommentService postCommentService;
     private final TourQaService tourQaService;
+    private final TourTagService tourTagService;
+    private final AttractionService attractionService;
+    private final DeparturePointService departurePointService;
+    private final TransportModeService transportModeService;
+    private final AirlineService airlineService;
+    private final BannerService bannerService;
 
     public AdminController(AdminService adminService,
                            BookingService bookingService,
@@ -78,7 +109,13 @@ public class AdminController {
                            PaymentService paymentService,
                            PostService postService,
                            PostCommentService postCommentService,
-                           TourQaService tourQaService) {
+                           TourQaService tourQaService,
+                           TourTagService tourTagService,
+                           AttractionService attractionService,
+                           DeparturePointService departurePointService,
+                           TransportModeService transportModeService,
+                           AirlineService airlineService,
+                           BannerService bannerService) {
         this.adminService = adminService;
         this.bookingService = bookingService;
         this.tourService = tourService;
@@ -91,6 +128,12 @@ public class AdminController {
         this.postService = postService;
         this.postCommentService = postCommentService;
         this.tourQaService = tourQaService;
+        this.tourTagService = tourTagService;
+        this.attractionService = attractionService;
+        this.departurePointService = departurePointService;
+        this.transportModeService = transportModeService;
+        this.airlineService = airlineService;
+        this.bannerService = bannerService;
     }
 
     // === Dashboard ===
@@ -102,8 +145,10 @@ public class AdminController {
     // === Users ===
     @GetMapping("/users")
     public ApiResponse<PageResponse<UserResponse>> users(@RequestParam(required = false) String keyword,
+                                                         @RequestParam(required = false) Set<RoleName> role,
+                                                         @RequestParam(required = false) UserStatus status,
                                                          @PageableDefault(size = 10) Pageable pageable) {
-        return ApiResponse.ok(PageResponse.of(adminService.users(keyword, pageable)));
+        return ApiResponse.ok(PageResponse.of(adminService.users(keyword, role, status, pageable)));
     }
 
     @GetMapping("/users/{id}")
@@ -119,6 +164,62 @@ public class AdminController {
     @PatchMapping("/users/{id}/unlock")
     public ApiResponse<UserResponse> unlock(@PathVariable Long id) {
         return ApiResponse.ok("Đã mở khóa tài khoản", adminService.changeUserStatus(id, UserStatus.ACTIVE));
+    }
+
+    @PostMapping("/staff")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<UserResponse> createStaff(@Valid @RequestBody UserCreateRequest request) {
+        return ApiResponse.ok("Tạo tài khoản nhân viên thành công",
+                adminService.createUser(request, STAFF_ROLES));
+    }
+
+    @PutMapping("/staff/{id}")
+    public ApiResponse<UserResponse> updateStaff(@PathVariable Long id,
+                                                 @Valid @RequestBody UserUpdateRequest request) {
+        return ApiResponse.ok("Cập nhật nhân viên thành công",
+                adminService.updateUser(id, request, STAFF_ROLES));
+    }
+
+    @DeleteMapping("/staff/{id}")
+    public ApiResponse<Void> deleteStaff(@PathVariable Long id) {
+        adminService.deleteUser(id);
+        return ApiResponse.message("Đã xóa tài khoản nhân viên");
+    }
+
+    @GetMapping("/staff")
+    public ApiResponse<PageResponse<UserResponse>> staff(@RequestParam(required = false) String keyword,
+                                                         @RequestParam(required = false) UserStatus status,
+                                                         @PageableDefault(size = 10) Pageable pageable) {
+        return ApiResponse.ok(PageResponse.of(
+                adminService.users(keyword, STAFF_ROLES, status, pageable)));
+    }
+
+    @GetMapping("/customers")
+    public ApiResponse<PageResponse<UserResponse>> customers(@RequestParam(required = false) String keyword,
+                                                             @RequestParam(required = false) UserStatus status,
+                                                             @PageableDefault(size = 10) Pageable pageable) {
+        return ApiResponse.ok(PageResponse.of(
+                adminService.users(keyword, CUSTOMER_ROLES, status, pageable)));
+    }
+
+    @PostMapping("/customers")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<UserResponse> createCustomer(@Valid @RequestBody UserCreateRequest request) {
+        return ApiResponse.ok("Tạo tài khoản khách hàng thành công",
+                adminService.createUser(request, CUSTOMER_ROLES));
+    }
+
+    @PutMapping("/customers/{id}")
+    public ApiResponse<UserResponse> updateCustomer(@PathVariable Long id,
+                                                    @Valid @RequestBody UserUpdateRequest request) {
+        return ApiResponse.ok("Cập nhật khách hàng thành công",
+                adminService.updateUser(id, request, CUSTOMER_ROLES));
+    }
+
+    @DeleteMapping("/customers/{id}")
+    public ApiResponse<Void> deleteCustomer(@PathVariable Long id) {
+        adminService.deleteUser(id);
+        return ApiResponse.message("Đã xóa tài khoản khách hàng");
     }
 
     @GetMapping("/users/{id}/bookings")
@@ -184,9 +285,7 @@ public class AdminController {
 
     @PutMapping("/tours/{id}")
     public ApiResponse<TourDetailResponse> updateTour(@PathVariable Long id, @Valid @RequestBody TourUpdateRequest request) {
-        Tour tour = tourService.find(id);
-        TourCreateRequest create = mapToCreate(request, tour.getCode());
-        return ApiResponse.ok("Cập nhật tour thành công", tourService.update(id, create));
+        return ApiResponse.ok("Cập nhật tour thành công", tourService.update(id, request));
     }
 
     @DeleteMapping("/tours/{id}")
@@ -203,23 +302,6 @@ public class AdminController {
     @PatchMapping("/tours/{id}/show")
     public ApiResponse<TourDetailResponse> showTour(@PathVariable Long id) {
         return ApiResponse.ok(tourService.changeVisibility(id, TourStatus.ACTIVE));
-    }
-
-    private TourCreateRequest mapToCreate(TourUpdateRequest request, String code) {
-        return TourCreateRequest.builder()
-                .code(code)
-                .name(request.getName())
-                .description(request.getDescription())
-                .durationDays(request.getDurationDays())
-                .durationNights(request.getDurationNights())
-                .originalPrice(request.getOriginalPrice())
-                .adultPrice(request.getAdultPrice())
-                .childPrice(request.getChildPrice())
-                .infantPrice(request.getInfantPrice())
-                .maxPeople(request.getMaxPeople())
-                .status(request.getStatus())
-                .featured(request.getFeatured())
-                .build();
     }
 
     // === Categories ===
@@ -273,7 +355,10 @@ public class AdminController {
 
     // === Schedules ===
     @GetMapping("/schedules")
-    public ApiResponse<List<ScheduleResponse>> schedules(@RequestParam Long tourId) {
+    public ApiResponse<List<ScheduleResponse>> schedules(@RequestParam(required = false) Long tourId) {
+        if (tourId == null) {
+            return ApiResponse.ok(scheduleService.findAll());
+        }
         return ApiResponse.ok(scheduleService.findByTour(tourId));
     }
 
@@ -430,5 +515,187 @@ public class AdminController {
     public ApiResponse<Void> adminDeleteReply(@PathVariable Long replyId) {
         tourQaService.deleteMyReply(replyId);
         return ApiResponse.message("Đã xóa trả lời");
+    }
+
+    // ===================== Tour Tags =====================
+    @GetMapping("/tour-tags")
+    public ApiResponse<PageResponse<TourTagResponse>> tourTags(@RequestParam(required = false) String keyword,
+                                                                @PageableDefault(size = 20) Pageable pageable) {
+        return ApiResponse.ok(PageResponse.of(tourTagService.search(keyword, pageable)));
+    }
+
+    @GetMapping("/tour-tags/{id}")
+    public ApiResponse<TourTagResponse> getTourTag(@PathVariable Long id) {
+        return ApiResponse.ok(tourTagService.get(id));
+    }
+
+    @PostMapping("/tour-tags")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<TourTagResponse> createTourTag(@Valid @RequestBody TourTagRequest request) {
+        return ApiResponse.ok(tourTagService.create(request));
+    }
+
+    @PutMapping("/tour-tags/{id}")
+    public ApiResponse<TourTagResponse> updateTourTag(@PathVariable Long id, @Valid @RequestBody TourTagRequest request) {
+        return ApiResponse.ok(tourTagService.update(id, request));
+    }
+
+    @DeleteMapping("/tour-tags/{id}")
+    public ApiResponse<Void> deleteTourTag(@PathVariable Long id) {
+        tourTagService.delete(id);
+        return ApiResponse.message("Đã xóa nhãn");
+    }
+
+    @PutMapping("/tours/{tourId}/tags")
+    public ApiResponse<Void> setTourTags(@PathVariable Long tourId, @RequestBody List<Long> tagIds) {
+        tourTagService.setTagsForTour(tourId, tagIds);
+        return ApiResponse.message("Đã cập nhật nhãn cho tour");
+    }
+
+    // ===================== Attractions =====================
+    @GetMapping("/attractions")
+    public ApiResponse<PageResponse<AttractionResponse>> attractions(@RequestParam(required = false) String keyword,
+                                                                     @RequestParam(required = false) Long destinationId,
+                                                                     @PageableDefault(size = 20) Pageable pageable) {
+        return ApiResponse.ok(PageResponse.of(attractionService.search(keyword, destinationId, pageable)));
+    }
+
+    @GetMapping("/attractions/{id}")
+    public ApiResponse<AttractionResponse> getAttraction(@PathVariable Long id) {
+        return ApiResponse.ok(attractionService.get(id));
+    }
+
+    @PostMapping("/attractions")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<AttractionResponse> createAttraction(@Valid @RequestBody AttractionRequest request) {
+        return ApiResponse.ok(attractionService.create(request));
+    }
+
+    @PutMapping("/attractions/{id}")
+    public ApiResponse<AttractionResponse> updateAttraction(@PathVariable Long id, @Valid @RequestBody AttractionRequest request) {
+        return ApiResponse.ok(attractionService.update(id, request));
+    }
+
+    @DeleteMapping("/attractions/{id}")
+    public ApiResponse<Void> deleteAttraction(@PathVariable Long id) {
+        attractionService.delete(id);
+        return ApiResponse.message("Đã xóa điểm tham quan");
+    }
+
+    // ===================== Departure Points =====================
+    @GetMapping("/departure-points")
+    public ApiResponse<PageResponse<DeparturePointResponse>> departurePoints(@RequestParam(required = false) String keyword,
+                                                                              @PageableDefault(size = 20) Pageable pageable) {
+        return ApiResponse.ok(PageResponse.of(departurePointService.search(keyword, pageable)));
+    }
+
+    @GetMapping("/departure-points/{id}")
+    public ApiResponse<DeparturePointResponse> getDeparturePoint(@PathVariable Long id) {
+        return ApiResponse.ok(departurePointService.get(id));
+    }
+
+    @PostMapping("/departure-points")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<DeparturePointResponse> createDeparturePoint(@Valid @RequestBody DeparturePointRequest request) {
+        return ApiResponse.ok(departurePointService.create(request));
+    }
+
+    @PutMapping("/departure-points/{id}")
+    public ApiResponse<DeparturePointResponse> updateDeparturePoint(@PathVariable Long id, @Valid @RequestBody DeparturePointRequest request) {
+        return ApiResponse.ok(departurePointService.update(id, request));
+    }
+
+    @DeleteMapping("/departure-points/{id}")
+    public ApiResponse<Void> deleteDeparturePoint(@PathVariable Long id) {
+        departurePointService.delete(id);
+        return ApiResponse.message("Đã xóa điểm khởi hành");
+    }
+
+    // ===================== Transport Modes =====================
+    @GetMapping("/transport-modes")
+    public ApiResponse<PageResponse<TransportModeResponse>> transportModes(@RequestParam(required = false) String keyword,
+                                                                            @PageableDefault(size = 20) Pageable pageable) {
+        return ApiResponse.ok(PageResponse.of(transportModeService.search(keyword, pageable)));
+    }
+
+    @GetMapping("/transport-modes/{id}")
+    public ApiResponse<TransportModeResponse> getTransportMode(@PathVariable Long id) {
+        return ApiResponse.ok(transportModeService.get(id));
+    }
+
+    @PostMapping("/transport-modes")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<TransportModeResponse> createTransportMode(@Valid @RequestBody TransportModeRequest request) {
+        return ApiResponse.ok(transportModeService.create(request));
+    }
+
+    @PutMapping("/transport-modes/{id}")
+    public ApiResponse<TransportModeResponse> updateTransportMode(@PathVariable Long id, @Valid @RequestBody TransportModeRequest request) {
+        return ApiResponse.ok(transportModeService.update(id, request));
+    }
+
+    @DeleteMapping("/transport-modes/{id}")
+    public ApiResponse<Void> deleteTransportMode(@PathVariable Long id) {
+        transportModeService.delete(id);
+        return ApiResponse.message("Đã xóa phương tiện");
+    }
+
+    // ===================== Airlines =====================
+    @GetMapping("/airlines")
+    public ApiResponse<PageResponse<AirlineResponse>> airlines(@RequestParam(required = false) String keyword,
+                                                               @PageableDefault(size = 20) Pageable pageable) {
+        return ApiResponse.ok(PageResponse.of(airlineService.search(keyword, pageable)));
+    }
+
+    @GetMapping("/airlines/{id}")
+    public ApiResponse<AirlineResponse> getAirline(@PathVariable Long id) {
+        return ApiResponse.ok(airlineService.get(id));
+    }
+
+    @PostMapping("/airlines")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<AirlineResponse> createAirline(@Valid @RequestBody AirlineRequest request) {
+        return ApiResponse.ok(airlineService.create(request));
+    }
+
+    @PutMapping("/airlines/{id}")
+    public ApiResponse<AirlineResponse> updateAirline(@PathVariable Long id, @Valid @RequestBody AirlineRequest request) {
+        return ApiResponse.ok(airlineService.update(id, request));
+    }
+
+    @DeleteMapping("/airlines/{id}")
+    public ApiResponse<Void> deleteAirline(@PathVariable Long id) {
+        airlineService.delete(id);
+        return ApiResponse.message("Đã xóa hãng hàng không");
+    }
+
+    // ===================== Banners =====================
+    @GetMapping("/banners")
+    public ApiResponse<PageResponse<BannerResponse>> banners(@RequestParam(required = false) BannerPosition position,
+                                                              @RequestParam(required = false) String keyword,
+                                                              @PageableDefault(size = 20) Pageable pageable) {
+        return ApiResponse.ok(PageResponse.of(bannerService.search(position, keyword, pageable)));
+    }
+
+    @GetMapping("/banners/{id}")
+    public ApiResponse<BannerResponse> getBanner(@PathVariable Long id) {
+        return ApiResponse.ok(bannerService.get(id));
+    }
+
+    @PostMapping("/banners")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<BannerResponse> createBanner(@Valid @RequestBody BannerRequest request) {
+        return ApiResponse.ok(bannerService.create(request));
+    }
+
+    @PutMapping("/banners/{id}")
+    public ApiResponse<BannerResponse> updateBanner(@PathVariable Long id, @Valid @RequestBody BannerRequest request) {
+        return ApiResponse.ok(bannerService.update(id, request));
+    }
+
+    @DeleteMapping("/banners/{id}")
+    public ApiResponse<Void> deleteBanner(@PathVariable Long id) {
+        bannerService.delete(id);
+        return ApiResponse.message("Đã xóa banner");
     }
 }

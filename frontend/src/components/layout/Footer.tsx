@@ -102,6 +102,12 @@ const Footer = () => {
         <div className="md:col-span-2">
           <h4 className="text-sm font-bold text-white">Hỗ trợ</h4>
           <ul className="mt-3 space-y-2 text-sm">
+            <li>
+              <Link to="/about" className="group inline-flex items-center gap-1 transition hover:text-white">
+                Về chúng tôi
+                <ArrowUpRight className="h-3 w-3 -translate-y-0.5 opacity-0 transition group-hover:opacity-100" />
+              </Link>
+            </li>
             <li className="hover:text-white cursor-pointer">Liên hệ</li>
             <li className="hover:text-white cursor-pointer">Điều khoản sử dụng</li>
             <li className="hover:text-white cursor-pointer">Chính sách bảo mật</li>
@@ -152,6 +158,7 @@ const Footer = () => {
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 py-5 text-xs text-slate-500 md:flex-row">
           <div>© 2026 TravelGo. Đồ án môn học UTC — All rights reserved.</div>
           <div className="flex items-center gap-4">
+            <Link to="/about" className="transition hover:text-slate-300">Về chúng tôi</Link>
             <span className="hover:text-slate-300 cursor-pointer">Điều khoản</span>
             <span className="hover:text-slate-300 cursor-pointer">Bảo mật</span>
             <span className="hover:text-slate-300 cursor-pointer">Cookies</span>

@@ -5,7 +5,7 @@ import { reviewApi } from '@/api/review.api';
 import { favoriteApi } from '@/api/favorite.api';
 import { useAsync } from '@/hooks/useAsync';
 import { TourDetailResponse, TourResponse, ReviewResponse } from '@/types';
-import { formatVND, formatDate } from '@/utils/format';
+import { formatVND, formatDate, transportIcon } from '@/utils/format';
 import { useAuth } from '@/context/AuthContext';
 import QaSection from '@/components/tour/QaSection';
 import {
@@ -185,6 +185,29 @@ const TourDetailPage = () => {
               {discount > 0 && <span className="badge-red">-{discount}%</span>}
             </div>
             <p className="text-xs text-slate-500">Giá người lớn / Trẻ em: {formatVND(t.childPrice)} / Em bé: {formatVND(t.infantPrice)}</p>
+
+            <div className="mt-4 space-y-2 text-sm">
+              {t.transports && t.transports.length > 0 ? (
+                <>
+                  <p className="text-xs font-semibold text-slate-500">Phương tiện di chuyển:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {t.transports.map((tr, idx) => {
+                      const Icon = transportIcon(tr.transportModeIcon);
+                      return (
+                        <span key={`${tr.transportModeId}-${idx}`} className="badge-slate">
+                          <Icon className="mr-1 inline h-3 w-3" />
+                          {tr.transportModeName}
+                          {tr.airlineName ? ` · ${tr.airlineName}` : ''}
+                          {tr.departurePointName ? ` · ${tr.departurePointName}` : ''}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                <p className="text-xs text-slate-400">Chưa cập nhật phương tiện di chuyển.</p>
+              )}
+            </div>
 
             <div className="mt-4 space-y-2 text-sm">
               {t.departureDates.length > 0 ? (

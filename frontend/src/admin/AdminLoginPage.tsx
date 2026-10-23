@@ -98,7 +98,9 @@ const AdminLoginPage = () => {
 
           <h2 className="text-2xl font-bold text-white">Đăng nhập quản trị</h2>
           <p className="mt-2 text-sm text-slate-400">
-            Chỉ tài khoản có quyền <span className="font-semibold text-amber-300">ADMIN</span> mới truy cập được.
+            Chỉ tài khoản có quyền{' '}
+            <span className="font-semibold text-amber-300">ADMIN</span> hoặc{' '}
+            <span className="font-semibold text-amber-300">STAFF</span> mới truy cập được.
           </p>
 
           <form onSubmit={onSubmit} className="mt-8 space-y-4">

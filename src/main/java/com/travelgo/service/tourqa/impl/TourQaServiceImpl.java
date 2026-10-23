@@ -96,9 +96,7 @@ public class TourQaServiceImpl implements TourQaService {
     public void deleteMyQuestion(Long id) {
         TourQa qa = find(id);
         User current = SecurityUtils.currentUser();
-        boolean isAdmin = current.getRoles().stream()
-                .anyMatch(r -> "ADMIN".equals(r.getName().name()));
-        if (!qa.getUser().getId().equals(current.getId()) && !isAdmin) {
+        if (!qa.getUser().getId().equals(current.getId()) && !SecurityUtils.isStaff()) {
             throw new ForbiddenException("Không có quyền xóa câu hỏi này");
         }
         tourQaRepository.delete(qa);
@@ -143,9 +141,7 @@ public class TourQaServiceImpl implements TourQaService {
     public void deleteMyReply(Long replyId) {
         QaReply reply = findReply(replyId);
         User current = SecurityUtils.currentUser();
-        boolean isAdmin = current.getRoles().stream()
-                .anyMatch(r -> "ADMIN".equals(r.getName().name()));
-        if (!reply.getUser().getId().equals(current.getId()) && !isAdmin) {
+        if (!reply.getUser().getId().equals(current.getId()) && !SecurityUtils.isStaff()) {
             throw new ForbiddenException("Không có quyền xóa trả lời này");
         }
         TourQa qa = reply.getQa();
@@ -157,12 +153,10 @@ public class TourQaServiceImpl implements TourQaService {
     @Transactional
     public QaReplyResponse markAsAnswer(Long replyId) {
         QaReply reply = findReply(replyId);
-        // Only the question's owner OR admin can mark as answer
+        // Chủ câu hỏi hoặc nhân viên nội bộ mới được đánh dấu trả lời hay
         User current = SecurityUtils.currentUser();
-        boolean isAdmin = current.getRoles().stream()
-                .anyMatch(r -> "ADMIN".equals(r.getName().name()));
-        if (!reply.getQa().getUser().getId().equals(current.getId()) && !isAdmin) {
-            throw new ForbiddenException("Chỉ chủ câu hỏi hoặc admin mới được đánh dấu trả lời hay");
+        if (!reply.getQa().getUser().getId().equals(current.getId()) && !SecurityUtils.isStaff()) {
+            throw new ForbiddenException("Chỉ chủ câu hỏi hoặc nhân viên mới được đánh dấu trả lời hay");
         }
         // Unmark all other replies of the same question
         qaReplyRepository.findByQaIdAndStatus(reply.getQa().getId(), ActiveStatus.ACTIVE)
@@ -176,9 +170,7 @@ public class TourQaServiceImpl implements TourQaService {
     public QaReplyResponse unmarkAsAnswer(Long replyId) {
         QaReply reply = findReply(replyId);
         User current = SecurityUtils.currentUser();
-        boolean isAdmin = current.getRoles().stream()
-                .anyMatch(r -> "ADMIN".equals(r.getName().name()));
-        if (!reply.getQa().getUser().getId().equals(current.getId()) && !isAdmin) {
+        if (!reply.getQa().getUser().getId().equals(current.getId()) && !SecurityUtils.isStaff()) {
             throw new ForbiddenException("Không có quyền bỏ đánh dấu");
         }
         reply.setIsAnswer(false);

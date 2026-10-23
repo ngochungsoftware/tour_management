@@ -20,6 +20,11 @@ import {
   PanelLeftOpen,
   Menu,
   X,
+  Hash,
+  Camera,
+  PlaneTakeoff,
+  Bus,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -75,14 +80,27 @@ const AdminShell = ({ children }: { children?: ReactNode }) => {
     return null;
   }
 
+  // Nhân viên chỉ xem/duyệt vận hành, không quản lý danh mục hệ thống & tài khoản.
+  const isAdmin = !!user?.roles?.includes('ADMIN');
   const links = [
     { to: '/admin-portal', label: 'Tổng quan', icon: LayoutDashboard, end: true },
     { to: '/admin-portal/tours', label: 'Quản lý Tour', icon: Map },
     { to: '/admin-portal/bookings', label: 'Đơn đặt tour', icon: CalendarRange },
-    { to: '/admin-portal/users', label: 'Khách hàng', icon: Users },
-    { to: '/admin-portal/categories', label: 'Danh mục', icon: FolderTree },
-    { to: '/admin-portal/destinations', label: 'Điểm đến', icon: MapPin },
-    { to: '/admin-portal/coupons', label: 'Mã giảm giá', icon: Tag },
+    ...(isAdmin
+      ? [
+          { to: '/admin-portal/users', label: 'Khách hàng', icon: Users },
+          { to: '/admin-portal/staff', label: 'Nhân viên', icon: UserCog },
+          { to: '/admin-portal/categories', label: 'Danh mục', icon: FolderTree },
+          { to: '/admin-portal/destinations', label: 'Điểm đến', icon: MapPin },
+          { to: '/admin-portal/attractions', label: 'Điểm tham quan', icon: Camera },
+          { to: '/admin-portal/tour-tags', label: 'Nhãn tour', icon: Hash },
+          { to: '/admin-portal/departure-points', label: 'Điểm khởi hành', icon: PlaneTakeoff },
+          { to: '/admin-portal/transport-modes', label: 'Phương tiện', icon: Bus },
+          { to: '/admin-portal/airlines', label: 'Hãng bay', icon: PlaneTakeoff },
+          { to: '/admin-portal/coupons', label: 'Mã giảm giá', icon: Tag },
+          { to: '/admin-portal/banners', label: 'Banner quảng cáo', icon: ImageIcon },
+        ]
+      : []),
     { to: '/admin-portal/reviews', label: 'Đánh giá', icon: MessageSquare },
     { to: '/admin-portal/tour-qa', label: 'Hỏi đáp', icon: HelpCircle },
   ];
@@ -260,7 +278,9 @@ const AdminShell = ({ children }: { children?: ReactNode }) => {
                   <div className="text-sm font-semibold text-slate-800">
                     {user?.fullName ?? 'Admin'}
                   </div>
-                  <div className="text-[10px] uppercase text-amber-600">Administrator</div>
+                  <div className="text-[10px] uppercase text-amber-600">
+                    {isAdmin ? 'Administrator' : 'Nhân viên'}
+                  </div>
                 </div>
                 <ChevronDown className="h-4 w-4 text-slate-400" />
               </button>
@@ -271,20 +291,22 @@ const AdminShell = ({ children }: { children?: ReactNode }) => {
                     <div className="text-sm font-semibold">{user?.fullName}</div>
                     <div className="text-xs text-slate-500">{user?.email}</div>
                   </div>
-                  <Link
+<Link
                     to="/"
                     onClick={() => setUserMenuOpen(false)}
                     className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
                   >
                     <Map className="h-4 w-4" /> Xem trang khách
                   </Link>
-                  <Link
-                    to="/admin-portal/users"
-                    onClick={() => setUserMenuOpen(false)}
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                  >
-                    <UserCog className="h-4 w-4" /> Tài khoản
-                  </Link>
+                  {isAdmin && (
+                    <Link
+                      to="/admin-portal/users"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                    >
+                      <UserCog className="h-4 w-4" /> Tài khoản
+                    </Link>
+                  )}
                   <button
                     onClick={handleLogout}
                     className="flex w-full items-center gap-2 border-t border-slate-100 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"

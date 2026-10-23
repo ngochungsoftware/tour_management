@@ -42,6 +42,20 @@ public class Booking {
     @JoinColumn(name = "COUPON_ID")
     private Coupon coupon;
 
+    // Phương tiện khách chọn khi đặt tour. Lưu snapshot tại thời điểm đặt để
+    // lịch sử booking không đổi theo khi admin sửa phương tiện của tour/lịch.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "TRANSPORT_MODE_ID")
+    private TransportMode transportMode;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "DEPARTURE_POINT_ID")
+    private DeparturePoint departurePoint;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "AIRLINE_ID")
+    private Airline airline;
+
     @Column(name = "ADULT_COUNT", nullable = false)
     private Integer adultCount;
 
@@ -81,6 +95,10 @@ public class Booking {
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<Payment> payments = new ArrayList<>();
+
+    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<BookingCoupon> bookingCoupons = new ArrayList<>();
 
     @PrePersist
     void prePersist() {

@@ -3,6 +3,7 @@ import { couponApi } from '@/api/coupon.api';
 import { useAsync } from '@/hooks/useAsync';
 import { CouponRequest, CouponResponse } from '@/types';
 import { Spinner, EmptyState, StatusBadge } from '@/components/ui/Feedback';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 import { Plus, Edit, Trash2, X, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatDate } from '@/utils/format';
@@ -18,6 +19,7 @@ const AdminCouponPage = () => {
     endDate: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString().slice(0, 10),
     maxUsage: 100,
   });
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const coupons = useAsync(() => couponApi.adminList());
 
   const onSave = async (e: React.FormEvent) => {
@@ -31,9 +33,11 @@ const AdminCouponPage = () => {
     } catch { /* handled */ }
   };
 
-  const onDelete = async (id: number) => {
-    if (!confirm('Xóa coupon?')) return;
-    try { await couponApi.remove(id); coupons.refetch(); } catch { /* handled */ }
+  const onDelete = async () => {
+    if (deletingId === null) return;
+    const id = deletingId;
+    setDeletingId(null);
+    try { await couponApi.remove(id); coupons.refetch(); toast.success('Đã xóa'); } catch { /* handled */ }
   };
 
   return (
@@ -59,7 +63,7 @@ const AdminCouponPage = () => {
                   <td className="px-4 py-3"><StatusBadge status={c.status} /></td>
                   <td className="px-4 py-3 text-right">
                     <button onClick={() => { setEditing(c); setForm({ code: c.code, name: c.name, discountPercent: c.discountPercent, startDate: c.startDate, endDate: c.endDate, maxUsage: c.maxUsage }); setShowForm(true); }} className="rounded p-1 text-blue-600 hover:bg-blue-50"><Edit className="h-4 w-4" /></button>
-                    <button onClick={() => onDelete(c.id)} className="ml-1 rounded p-1 text-red-600 hover:bg-red-50"><Trash2 className="h-4 w-4" /></button>
+                    <button onClick={() => setDeletingId(c.id)} className="ml-1 rounded p-1 text-red-600 hover:bg-red-50"><Trash2 className="h-4 w-4" /></button>
                   </td>
                 </tr>
               ))}
@@ -90,6 +94,14 @@ const AdminCouponPage = () => {
           </div>
         </div>
       )}
+      <ConfirmModal
+        open={deletingId !== null}
+        title="Xóa mã giảm giá?"
+        description="Hành động này không thể hoàn tác."
+        confirmText="Xóa"
+        onConfirm={onDelete}
+        onCancel={() => setDeletingId(null)}
+      />
     </div>
   );
 };

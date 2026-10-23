@@ -49,6 +49,10 @@ public interface TourQaRepository extends JpaRepository<TourQa, Long>,
 
     long countByStatus(ActiveStatus status);
 
+    long countByUserId(Long userId);
+
+    long countByUserIdAndStatus(Long userId, ActiveStatus status);
+
     /**
      * Top N câu hỏi được đánh dấu có câu trả lời hay + nhiều reply.
      * Dùng cho FAQ / "Câu hỏi hay nhất".

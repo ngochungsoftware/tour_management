@@ -1,3 +1,16 @@
+import {
+  Plane,
+  PlaneTakeoff,
+  Train,
+  Bus,
+  Ship,
+  Car,
+  Truck,
+  Bike,
+  Footprints,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+
 export const formatVND = (value?: number | null) => {
   if (value === null || value === undefined) return 'Liên hệ';
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value);
@@ -87,6 +100,40 @@ export const paymentMethodLabel = (m: string) => {
       ONLINE: 'Thanh toán online',
     } as Record<string, string>
   )[m] || m;
+};
+
+/**
+ * Dịch giới tính từ mã enum sang tiếng Việt.
+ * Backend trả về 'MALE' | 'FEMALE' | 'OTHER' (có thể null/undefined/rỗng).
+ */
+export const genderLabel = (g?: string | null): string => {
+  if (!g) return 'Không cung cấp';
+  return (
+    {
+      MALE: 'Nam',
+      FEMALE: 'Nữ',
+      OTHER: 'Khác',
+    } as Record<string, string>
+  )[g.toUpperCase()] || g;
+};
+
+/**
+ * Icon phương tiện di chuyển. DB lưu tên icon dạng chuỗi (Lucide name),
+ * nên cần map sang component thực tế, fallback về Bus.
+ */
+export const transportIcon = (name?: string | null) => {
+  const map: Record<string, LucideIcon> = {
+    Plane: Plane,
+    PlaneTakeoff: PlaneTakeoff,
+    Train: Train,
+    Bus: Bus,
+    Ship: Ship,
+    Car: Car,
+    Truck: Truck,
+    Bike: Bike,
+    Footprints: Footprints,
+  };
+  return map[name ?? ''] ?? Bus;
 };
 
 /**

@@ -20,4 +20,6 @@ public interface PostCommentRepository extends JpaRepository<PostComment, Long> 
     List<PostComment> findByPostIdAndStatus(@Param("postId") Long postId, @Param("status") ActiveStatus status);
 
     long countByPostIdAndStatus(Long postId, ActiveStatus status);
+
+    long countByUserId(Long userId);
 }
