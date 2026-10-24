@@ -28,19 +28,20 @@ public class AttractionServiceImpl implements AttractionService {
 
     @Override
     public List<AttractionResponse> findActive() {
-        return attractionRepository.findByStatus(ActiveStatus.ACTIVE).stream()
+        return attractionRepository.findByStatusWithDestination(ActiveStatus.ACTIVE).stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     @Override
     public List<AttractionResponse> findByDestination(Long destinationId) {
-        return attractionRepository.findByDestination_Id(destinationId).stream()
+        return attractionRepository.findByDestinationIdWithDestination(destinationId).stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<AttractionResponse> search(String keyword, Long destinationId, Pageable pageable) {
         Specification<Attraction> spec = (root, query, cb) -> {
             List<Predicate> predicates = new java.util.ArrayList<>();
@@ -104,7 +105,7 @@ public class AttractionServiceImpl implements AttractionService {
     }
 
     private Attraction find(Long id) {
-        return attractionRepository.findById(id)
+        return attractionRepository.findByIdWithDestination(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Điểm tham quan không tồn tại"));
     }
 
